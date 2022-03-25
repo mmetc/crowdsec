@@ -49,6 +49,9 @@ jobs:
         sudo apt install -qq daemonize netcat-openbsd
         GO111MODULE=on go get github.com/mikefarah/yq/v4
 
+    - name: "wait 2 minutes"
+      run: sleep 120
+
     - name: "BATS: build crowdsec (DB_BACKEND: pgx)"
       run: make clean bats-build
       env:
