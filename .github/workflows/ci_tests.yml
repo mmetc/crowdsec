@@ -69,19 +69,19 @@ jobs:
           ~/go/bin/gocovmerge coverage.out coverage-bats.out > coverage-all.out
 
       - name: gcov2lcov
-        uses: jandelgado/gcov2lcov-action@v1.0.2
+        uses: jandelgado/gcov2lcov-action@v1.0.8
         with:
           infile: coverage.out
           outfile: coverage-all.txt
 
       - name: gcov2lcov
-        uses: jandelgado/gcov2lcov-action@v1.0.2
+        uses: jandelgado/gcov2lcov-action@v1.0.8
         with:
           infile: coverage-bats.out
           outfile: coverage-all.txt
 
       - name: gcov2lcov
-        uses: jandelgado/gcov2lcov-action@v1.0.2
+        uses: jandelgado/gcov2lcov-action@v1.0.8
         with:
           infile: coverage-all.out
           outfile: coverage-all.txt
