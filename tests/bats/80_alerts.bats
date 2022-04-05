@@ -88,6 +88,9 @@ teardown() {
     assert_line --regexp "^.* ID .* SCOPE:VALUE .* ACTION .* EXPIRATION .* CREATED AT .*$"
     assert_line --regexp "^.* $ALERT_ID .* Ip:10.20.30.40 .* ban .*$"
 
+    run -0 cscli alerts inspect "$ALERT_ID" -o human --detail
+    # XXX can we have something here?
+
     run -0 cscli alerts inspect "$ALERT_ID" -o raw
     assert_line --regexp "^ *capacity: 0$"
     assert_line --regexp "^ *id: $ALERT_ID$"
@@ -115,4 +118,16 @@ teardown() {
     assert_output "id,scope,value,reason,country,as,decisions,created_at"
     run -0 cscli alerts list --until 200d -o raw --machine
     assert_output "id,scope,value,reason,country,as,decisions,created_at,machine"
+}
+
+@test "$FILE bad duration" {
+    skip 'TODO'
+    run -0 cscli decisions add -i 10.20.30.40 -t ban
+    run -9 cscli decisions list --ip 10.20.30.40 -o json
+    run -9 jq -r '.[].decisions[].id' <(output)
+    DECISION_ID="$output"
+
+    ./instance-crowdsec stop
+    run -0 ./instance-db exec_sql "UPDATE decisions SET ... WHERE id=$DECISION_ID"
+    ./instance-crowdsec start
 }
