@@ -29,6 +29,8 @@ api() {
 #----------
 
 @test "$FILE cli - first decisions list: must be empty" {
+    # delete community pull
+    run -0 cscli decisions delete --all
     run -0 cscli decisions list -o json
     assert_output 'null'
 }
