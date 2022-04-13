@@ -88,6 +88,10 @@ jobs:
         PGPASSWORD: ${{ secrets.DATABASE_PASSWORD }}
         PGUSER: postgres
 
+    - name: "Show crowdsec logs"
+      run:
+        for file in ./tests/local/var/log/crowdsec/*; do echo ">>>>> $file"; cat $file; echo; done
+
     - name: "Show database logs"
       run: docker logs "${{ job.services.database.id }}"
       if: ${{ always() }}

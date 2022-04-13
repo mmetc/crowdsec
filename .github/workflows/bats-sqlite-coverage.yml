@@ -47,3 +47,8 @@ jobs:
       with:
         name: coverage-bats.out
         path: ./tests/local/var/lib/coverage/coverage-bats.out
+
+    - name: "Show crowdsec logs"
+      run:
+        for file in ./tests/local/var/log/crowdsec/*; do echo ">>>>> $file"; cat $file; echo; done
+
