@@ -91,6 +91,7 @@ jobs:
     - name: "Show crowdsec logs"
       run:
         for file in ./tests/local/var/log/crowdsec/*; do echo ">>>>> $file"; cat $file; echo; done
+      if: ${{ always() }}
 
     - name: "Show database logs"
       run: docker logs "${{ job.services.database.id }}"
