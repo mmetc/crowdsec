@@ -50,6 +50,7 @@ jobs:
 
     - name: "Show crowdsec logs"
       run:
+        find .
         for file in $(find ./tests/local/var/log/crowdsec -type f); do echo ">>>>> $file"; cat $file; echo; done
       if: ${{ always() }}
 
