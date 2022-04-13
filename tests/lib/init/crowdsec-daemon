@@ -34,7 +34,7 @@ start() {
     OUT_FILE="${LOG_DIR}/crowdsec.out" \
             DAEMON_PID="${DAEMON_PID}" \
             "${TEST_DIR}/run-as-daemon" "${CROWDSEC}"
-    ./lib/util/wait-for-port 6060
+    ./lib/util/wait-for-port 6060 || (cat "${LOG_DIR}/crowdsec.log" >&2; exit 1)
 }
 
 stop() {
