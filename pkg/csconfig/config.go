@@ -2,7 +2,6 @@ package csconfig
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -46,7 +45,7 @@ func (c *Config) Dump() error {
 }
 
 func NewConfig(configFile string, disableAgent bool, disableAPI bool) (*Config, error) {
-	fcontent, err := ioutil.ReadFile(configFile)
+	fcontent, err := mergedYAML(configFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read config file")
 	}
@@ -59,7 +58,8 @@ func NewConfig(configFile string, disableAgent bool, disableAPI bool) (*Config, 
 
 	err = yaml.UnmarshalStrict([]byte(configData), &cfg)
 	if err != nil {
-		return nil, err
+		// this is actually the "merged" yaml
+		return nil, errors.Wrap(err, configFile)
 	}
 	return &cfg, nil
 }
