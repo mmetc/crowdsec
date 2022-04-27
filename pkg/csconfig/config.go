@@ -46,7 +46,8 @@ func (c *Config) Dump() error {
 }
 
 func NewConfig(configFile string, disableAgent bool, disableAPI bool) (*Config, error) {
-	fcontent, err := yamlpatch.PatchedYAML(configFile)
+	patcher := yamlpatch.NewPatcher(configFile)
+	fcontent, err := patcher.PatchedContent()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read config file")
 	}

@@ -28,7 +28,7 @@ teardown() {
     run -0 cscli config show --key Config.Common.LogLevel
     assert_output "info"
 
-    echo "{'common':{'log_level':'debug'}}" > "${CONFIG_YAML}.override"
+    echo "{'common':{'log_level':'debug'}}" > "${CONFIG_YAML}.patch"
     run -0 cscli config show --key Config.Common.LogLevel
     assert_output "debug"
 }

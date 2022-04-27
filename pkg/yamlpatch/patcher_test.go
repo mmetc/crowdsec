@@ -23,12 +23,12 @@ func assertErrorContains(t *testing.T, err error, expectedErr string) {
 	assert.Contains(t, err.Error(), expectedErr)
 }
 
-func TestOverride(t *testing.T) {
+func TestYAMLPatch(t *testing.T) {
 	assert := assert.New(t)
 
 	tests := []struct {
 		base        string
-		over        string
+		patch       string
 		expected    string
 		expectedErr string
 	}{
@@ -48,7 +48,7 @@ func TestOverride(t *testing.T) {
 			"",
 			"notayaml",
 			"",
-			"/config.yaml.override: yaml: unmarshal errors:",
+			"/config.yaml.patch: yaml: unmarshal errors:",
 		},
 		{
 			"",
@@ -64,13 +64,13 @@ func TestOverride(t *testing.T) {
 		},
 	}
 
-	dirPath, err := os.MkdirTemp("", "override")
+	dirPath, err := os.MkdirTemp("", "yamlpatch")
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 	defer os.RemoveAll(dirPath)
 	configPath := filepath.Join(dirPath, "config.yaml")
-	overridePath := filepath.Join(dirPath, "config.yaml.override")
+	patchPath := filepath.Join(dirPath, "config.yaml.patch")
 
 	for _, test := range tests {
 		err = os.WriteFile(configPath, []byte(test.base), 0o644)
@@ -78,14 +78,14 @@ func TestOverride(t *testing.T) {
 			t.Fatal(err.Error())
 		}
 
-		err = os.WriteFile(overridePath, []byte(test.over), 0o644)
+		err = os.WriteFile(patchPath, []byte(test.patch), 0o644)
 		if err != nil {
 			t.Fatal(err.Error())
 		}
 
-		var merged []byte
-		merged, err = PatchedYAML(configPath)
+		patcher := NewPatcher(configPath)
+		patchedBytes, err := patcher.PatchedContent()
 		assertErrorContains(t, err, test.expectedErr)
-		assert.YAMLEq(string(merged), test.expected)
+		assert.YAMLEq(string(patchedBytes), test.expected)
 	}
 }

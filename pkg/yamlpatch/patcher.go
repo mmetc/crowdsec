@@ -8,6 +8,20 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type Patcher struct {
+	BaseFilePath  string
+	PatchFilePath string
+}
+
+func NewPatcher(filePath string) *Patcher {
+	yamlpatcher := Patcher{
+		BaseFilePath:  filePath,
+		PatchFilePath: filePath + ".patch",
+	}
+
+	return &yamlpatcher
+}
+
 // reads a single YAML file and returns a map that can be serialized later
 func readYAML(filePath string) (map[interface{}]interface{}, error) {
 	var yamlMap map[interface{}]interface{}
@@ -25,19 +39,19 @@ func readYAML(filePath string) (map[interface{}]interface{}, error) {
 	return yamlMap, nil
 }
 
-// PatchedYAML reads a YAML file and, if it exists, its '.override' file, then
+// PatchedContent reads a YAML file and, if it exists, its '.patch' file, then
 // merges them and returns it serialized
-func PatchedYAML(filePath string) ([]byte, error) {
+func (p *Patcher) PatchedContent() ([]byte, error) {
 	var err error
 	var base map[interface{}]interface{}
 	var over map[interface{}]interface{}
 
-	base, err = readYAML(filePath)
+	base, err = readYAML(p.BaseFilePath)
 	if err != nil {
 		return nil, err
 	}
 
-	over, err = readYAML(filePath + ".override")
+	over, err = readYAML(p.PatchFilePath)
 	if err != nil {
 		// optional file, ignore if it does not exist
 		if !errors.Is(err, os.ErrNotExist) {
