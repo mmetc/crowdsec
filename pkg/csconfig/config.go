@@ -59,7 +59,7 @@ func NewConfig(configFile string, disableAgent bool, disableAPI bool) (*Config, 
 
 	err = yaml.UnmarshalStrict([]byte(configData), &cfg)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, configFile)
 	}
 	return &cfg, nil
 }
