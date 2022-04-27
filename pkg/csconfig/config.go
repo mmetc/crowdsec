@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/yamlpatch"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -45,7 +46,7 @@ func (c *Config) Dump() error {
 }
 
 func NewConfig(configFile string, disableAgent bool, disableAPI bool) (*Config, error) {
-	fcontent, err := mergedYAML(configFile)
+	fcontent, err := yamlpatch.PatchedYAML(configFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read config file")
 	}

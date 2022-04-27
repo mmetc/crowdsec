@@ -1,4 +1,4 @@
-package csconfig
+package yamlpatch
 
 import (
 	"os"
@@ -84,7 +84,7 @@ func TestOverride(t *testing.T) {
 		}
 
 		var merged []byte
-		merged, err = mergedYAML(configPath)
+		merged, err = PatchedYAML(configPath)
 		assertErrorContains(t, err, test.expectedErr)
 		assert.YAMLEq(string(merged), test.expected)
 	}

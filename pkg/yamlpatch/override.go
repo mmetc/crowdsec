@@ -1,4 +1,4 @@
-package csconfig
+package yamlpatch
 
 import (
 	"os"
@@ -25,9 +25,9 @@ func readYAML(filePath string) (map[interface{}]interface{}, error) {
 	return yamlMap, nil
 }
 
-// reads a YAML file and, if it exists, its '.override' file, then
+// PatchedYAML reads a YAML file and, if it exists, its '.override' file, then
 // merges them and returns it serialized
-func mergedYAML(filePath string) ([]byte, error) {
+func PatchedYAML(filePath string) ([]byte, error) {
 	var err error
 	var base map[interface{}]interface{}
 	var over map[interface{}]interface{}
