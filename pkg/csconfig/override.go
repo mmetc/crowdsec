@@ -1,47 +1,48 @@
 package csconfig
 
-// with yaml v3:
-// https://stackoverflow.com/questions/65768861/read-and-merge-two-yaml-files-dynamically-and-or-recursively
-
 import (
 	"os"
 
-	"github.com/pkg/errors"
-
 	"github.com/imdario/mergo"
-	log "github.com/sirupsen/logrus"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
-func mergedYAML(filePath string) ([]byte, error) {
+// reads a single YAML file and returns a map that can be serialized later
+func readYAML(filePath string) (map[interface{}]interface{}, error) {
+	var yamlMap map[interface{}]interface{}
+	var content []byte
 	var err error
-	basePath := filePath
-	overPath := filePath + ".override"
 
-	var baseContent []byte
-	if baseContent, err = os.ReadFile(basePath); err != nil {
+	if content, err = os.ReadFile(filePath); err != nil {
 		return nil, err
 	}
 
-	var base map[interface{}]interface{}
-	log.Debugf("Unmarshaling %s", basePath)
-	err = yaml.Unmarshal(baseContent, &base)
-	if err != nil {
-		return nil, errors.Wrap(err, basePath)
+	if err = yaml.Unmarshal(content, &yamlMap); err != nil {
+		return nil, errors.Wrap(err, filePath)
 	}
 
-	var overContent []byte
-	if overContent, err = os.ReadFile(overPath); err != nil {
+	return yamlMap, nil
+}
+
+// reads a YAML file and, if it exists, its '.override' file, then
+// merges them and returns it serialized
+func mergedYAML(filePath string) ([]byte, error) {
+	var err error
+	var base map[interface{}]interface{}
+	var over map[interface{}]interface{}
+
+	base, err = readYAML(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	over, err = readYAML(filePath + ".override")
+	if err != nil {
+		// optional file, ignore if it does not exist
 		if !errors.Is(err, os.ErrNotExist) {
 			return nil, err
 		}
-	}
-
-	var over map[interface{}]interface{}
-	log.Debugf("Unmarshaling %s", overPath)
-	err = yaml.Unmarshal(overContent, &over)
-	if err != nil {
-		return nil, errors.Wrap(err, overPath)
 	}
 
 	if err := mergo.Merge(&over, base); err != nil {
