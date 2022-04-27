@@ -22,7 +22,7 @@ func TestNormalLoad(t *testing.T) {
 	}
 
 	_, err = NewConfig("./tests/simulation.yaml", false, false)
-	if !strings.HasPrefix(fmt.Sprintf("%s", err), "yaml: unmarshal errors:") {
+	if !strings.HasPrefix(fmt.Sprintf("%s", err), "./tests/simulation.yaml: yaml: unmarshal errors:") {
 		t.Fatalf("unexpected error %s", err)
 	}
 
