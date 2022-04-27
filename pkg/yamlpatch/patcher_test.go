@@ -86,6 +86,6 @@ func TestYAMLPatch(t *testing.T) {
 		patcher := NewPatcher(configPath)
 		patchedBytes, err := patcher.PatchedContent()
 		assertErrorContains(t, err, test.expectedErr)
-		assert.YAMLEq(string(patchedBytes), test.expected)
+		assert.YAMLEq(test.expected, string(patchedBytes))
 	}
 }
