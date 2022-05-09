@@ -142,11 +142,78 @@ declare stderr
     if is_db_postgres; then sleep 4; fi
     run -0 --separate-stderr cscli lapi status
 
-    run -0 echo "$stderr"
+    run -0 echo "${stderr}"
     assert_output --partial "Loaded credentials from"
     assert_output --partial "Trying to authenticate with username"
     assert_output --partial " on http://127.0.0.1:8080/"
     assert_output --partial "You can successfully interact with Local API (LAPI)"
+}
+
+@test "$FILE cscli - missing LAPI credentials file" {
+    LOCAL_API_CREDENTIALS=$(config_yq '.api.client.credentials_path')
+    rm -f "${LOCAL_API_CREDENTIALS}"
+    run -1 --separate-stderr cscli lapi status
+    run -0 echo "${stderr}"
+    assert_output --partial "loading api client: while reading credential configuration file: open ${LOCAL_API_CREDENTIALS}: no such file or directory"
+
+    run -1 --separate-stderr cscli alerts list
+    run -0 echo "${stderr}"
+    assert_output --partial "loading api client: while reading credential configuration file: open ${LOCAL_API_CREDENTIALS}: no such file or directory"
+
+    run -1 --separate-stderr cscli decisions list
+    run -0 echo "${stderr}"
+    assert_output --partial "loading api client: while reading credential configuration file: open ${LOCAL_API_CREDENTIALS}: no such file or directory"
+}
+
+@test "$FILE cscli - empty LAPI credentials file" {
+    LOCAL_API_CREDENTIALS=$(config_yq '.api.client.credentials_path')
+    truncate -s 0 "${LOCAL_API_CREDENTIALS}"
+    run -1 --separate-stderr cscli lapi status
+    run -0 echo "${stderr}"
+    assert_output --partial "no credentials or URL found in api client configuration '${LOCAL_API_CREDENTIALS}'"
+
+    run -1 --separate-stderr cscli alerts list
+    run -0 echo "${stderr}"
+    assert_output --partial "no credentials or URL found in api client configuration '${LOCAL_API_CREDENTIALS}'"
+
+    run -1 --separate-stderr cscli decisions list
+    run -0 echo "${stderr}"
+    assert_output --partial "no credentials or URL found in api client configuration '${LOCAL_API_CREDENTIALS}'"
+}
+
+@test "$FILE cscli - missing LAPI client settings" {
+    yq e 'del(.api.client)' -i "${CONFIG_YAML}"
+    run -1 --separate-stderr cscli lapi status
+    run -0 echo "${stderr}"
+    assert_output --partial "loading api client: no API client section in configuration"
+
+    run -1 --separate-stderr cscli alerts list
+    run -0 echo "${stderr}"
+    assert_output --partial "loading api client: no API client section in configuration"
+
+    run -1 --separate-stderr cscli decisions list
+    run -0 echo "${stderr}"
+    assert_output --partial "loading api client: no API client section in configuration"
+}
+
+@test "$FILE cscli - malformed LAPI url" {
+    LOCAL_API_CREDENTIALS=$(config_yq '.api.client.credentials_path')
+    yq e '.url="https://127.0.0.1:-80"' -i "${LOCAL_API_CREDENTIALS}"
+
+    run -1 --separate-stderr cscli lapi status
+    run -0 echo "${stderr}"
+    assert_output --partial 'parsing api url'
+    assert_output --partial 'invalid port \":-80\" after host'
+
+    run -1 --separate-stderr cscli alerts list
+    run -0 echo "${stderr}"
+    assert_output --partial 'parsing api url'
+    assert_output --partial 'invalid port ":-80" after host'
+
+    run -1 --separate-stderr cscli decisions list
+    run -0 echo "${stderr}"
+    assert_output --partial 'parsing api url'
+    assert_output --partial 'invalid port ":-80" after host'
 }
 
 @test "$FILE cscli metrics" {
