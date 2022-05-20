@@ -79,6 +79,9 @@ jobs:
         with:
           name: coverage-bats.out.bz2
 
+      - name: Environment
+        run: env
+
       - name: merge coverage reports
         run: |
           go install github.com/wadey/gocovmerge@latest
@@ -86,6 +89,12 @@ jobs:
           bunzip2 coverage-bats.out.bz2
           ~/go/bin/gocovmerge coverage.out coverage-bats.out > coverage-all.out
           bzip2 <coverage-all.out >coverage-all.out.bz2
+
+      - name: coverage.out
+        run: cat coverage.out
+
+      - name: coverage-bats.out
+        run: cat coverage-bats.out
 
       - name: gcov2lcov
         uses: jandelgado/gcov2lcov-action@v1.0.8
