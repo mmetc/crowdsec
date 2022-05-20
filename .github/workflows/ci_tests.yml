@@ -70,7 +70,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 1
-          path: go/src/github.com/crowdsecurity/crowdsec
+          path: /home/runner/go/src/github.com/crowdsecurity/crowdsec
 
       - name: Download unit report
         uses: actions/download-artifact@v3
