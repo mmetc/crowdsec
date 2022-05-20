@@ -80,7 +80,7 @@ jobs:
           name: coverage-bats.out.bz2
 
       - name: Environment
-        run: env
+        run: env | sort
 
       - name: merge coverage reports
         run: |
