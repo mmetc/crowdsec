@@ -106,7 +106,7 @@ jobs:
           outfile: coverage-all.txt
           version: v1.0.5
         env:
-          GOPATH: /home/runner/work/crowdsec/go
+          GOPATH: /home/runner/work/crowdsec/crowdsec/go
 
       - name: Coverage report artifact (merged)
         uses: actions/upload-artifact@v2
