@@ -104,6 +104,7 @@ jobs:
         with:
           infile: coverage-all.out
           outfile: coverage-all.txt
+          version: v1.0.5
 
       - name: Coverage report artifact (merged)
         uses: actions/upload-artifact@v2
