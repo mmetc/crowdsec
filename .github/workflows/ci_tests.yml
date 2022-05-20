@@ -87,7 +87,7 @@ jobs:
 
       - name: merge coverage reports
         run: |
-          go get -u github.com/wadey/gocovmerge
+          go install github.com/wadey/gocovmerge@latest
           bunzip2 coverage.out.bz2
           bunzip2 coverage-bats.out.bz2
           ~/go/bin/gocovmerge coverage.out coverage-bats.out > coverage-all.out
