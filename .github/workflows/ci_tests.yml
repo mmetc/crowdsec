@@ -108,3 +108,16 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path-to-lcov: coverage-all.txt
 
+      - name: Upload unittest coverage to Codecov
+        uses: codecov/codecov-action@v2
+        with:
+          files: coverage.out
+          flags: unittests
+          verbose: true
+
+      - name: Upload functest coverage to Codecov
+        uses: codecov/codecov-action@v2
+        with:
+          files: coverage-bats.out
+          flags: functests
+          verbose: true
