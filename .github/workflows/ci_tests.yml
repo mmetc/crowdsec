@@ -72,9 +72,6 @@ jobs:
           fetch-depth: 0
           submodules: false
 
-      - name: gcov2lcov
-        run: go get -u github.com/jandelgado/gcov2lcov
-
       - name: Download unit report
         uses: actions/download-artifact@v3
         with:
@@ -104,12 +101,6 @@ jobs:
         with:
           infile: coverage-all.out
           outfile: coverage-all.txt
-
-      - name: coverage-all.txt
-        run: cat coverage-all.txt
-
-      - name: show working directory
-        run: find /home/runner/work/
 
       - name: Coveralls
         uses: coverallsapp/github-action@master
