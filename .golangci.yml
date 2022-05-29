@@ -229,16 +229,6 @@ issues:
       text: "S1028: should use .* instead of .*"
 
     #
-    # deadcode
-    #
-
-    - linters:
-        - deadcode
-        - unused
-        - structcheck
-      text: ".* is unused"
-
-    #
     # ineffassign
     #
 
