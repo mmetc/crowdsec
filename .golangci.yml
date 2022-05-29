@@ -232,10 +232,3 @@ issues:
         - gosimple
       text: "S1028: should use .* instead of .*"
 
-    #
-    # ineffassign
-    #
-
-    - linters:
-        - ineffassign
-      text: "ineffectual assignment to .*"
