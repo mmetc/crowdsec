@@ -9,6 +9,7 @@ import (
 	"os"
 	"reflect"
 	"sort"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -27,17 +28,37 @@ import (
 	"gopkg.in/tomb.v2"
 )
 
+func databaseCTestCfg(dbPath string) csconfig.DatabaseCfg {
+	dbType := os.Getenv("CROWDSEC_TEST_CLIENT_DB_TYPE")
+	if dbType == "" {
+		dbType = "sqlite"
+	}
+
+	dbUser := os.Getenv("CROWDSEC_TEST_CLIENT_DB_USER")
+	dbPassword := os.Getenv("CROWDSEC_TEST_CLIENT_DB_PASSWORD")
+	dbName := os.Getenv("CROWDSEC_TEST_CLIENT_DB_NAME")
+	dbHost := os.Getenv("CROWDSEC_TEST_CLIENT_DB_HOST")
+	dbPort, _ := strconv.ParseInt(os.Getenv("CROWDSEC_TEST_CLIENT_DB_PORT"), 10, 16)
+
+	return csconfig.DatabaseCfg{
+		Type:     dbType,
+		User:     dbUser,
+		Password: dbPassword,
+		DbName:   dbName,
+		Host:     dbHost,
+		Port:     int(dbPort),
+		DbPath:   dbPath,
+	}
+}
+
 func getDBClient(t *testing.T) *database.Client {
 	t.Helper()
 	dbPath, err := os.CreateTemp("", "*sqlite")
 	if err != nil {
 		t.Fatal(err)
 	}
-	dbClient, err := database.NewClient(&csconfig.DatabaseCfg{
-		Type:   "sqlite",
-		DbName: "crowdsec",
-		DbPath: dbPath.Name(),
-	})
+	dbconfig := databaseCTestCfg(dbPath.Name())
+	dbClient, err := database.NewClient(&dbconfig)
 	if err != nil {
 		t.Fatal(err)
 	}

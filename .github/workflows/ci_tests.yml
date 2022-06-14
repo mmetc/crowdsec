@@ -1,3 +1,4 @@
+---
 name: Tests
 
 # Main workflow for tests, it calls all the others through parallel jobs.
@@ -25,6 +26,19 @@ jobs:
 
   go-tests:
     uses: ./.github/workflows/go-tests.yml
+
+  go-tests-mysql:
+    uses: ./.github/workflows/go-tests-mysql.yml
+    with:
+      database_image: mysql:latest
+    secrets:
+      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD}}
+
+  go-tests-postgres:
+    if: ${{ false }}
+    uses: ./.github/workflows/go-tests-postgres.yml
+    secrets:
+      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD}}
 
   bats-sqlite:
     uses: ./.github/workflows/bats-sqlite-coverage.yml
@@ -60,4 +74,3 @@ jobs:
     secrets:
       GIST_BADGES_ID: ${{ secrets.GIST_BADGES_ID }}
       GIST_BADGES_SECRET: ${{ secrets.GIST_BADGES_SECRET }}
-

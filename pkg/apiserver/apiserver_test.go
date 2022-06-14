@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -36,6 +37,32 @@ var MachineTest = models.WatcherAuthRequest{
 var UserAgent = fmt.Sprintf("crowdsec-test/%s", cwversion.Version)
 var emptyBody = strings.NewReader("")
 
+func databaseTestCfg(dbPath string, flushConfig csconfig.FlushDBCfg) csconfig.DatabaseCfg {
+	dbType := os.Getenv("CROWDSEC_TEST_SERVER_DB_TYPE")
+	if dbType == "" {
+		dbType = "sqlite"
+	}
+
+	log.Infof("Using database driver: %s", dbType)
+
+	dbUser := os.Getenv("CROWDSEC_TEST_SERVER_DB_USER")
+	dbPassword := os.Getenv("CROWDSEC_TEST_SERVER_DB_PASSWORD")
+	dbName := os.Getenv("CROWDSEC_TEST_SERVER_DB_NAME")
+	dbHost := os.Getenv("CROWDSEC_TEST_SERVER_DB_HOST")
+	dbPort, _ := strconv.ParseInt(os.Getenv("CROWDSEC_TEST_SERVER_DB_PORT"), 10, 16)
+
+	return csconfig.DatabaseCfg{
+		Type:     dbType,
+		User:     dbUser,
+		Password: dbPassword,
+		DbName:   dbName,
+		Host:     dbHost,
+		Port:     int(dbPort),
+		DbPath:   dbPath,
+		Flush:    &flushConfig,
+	}
+}
+
 func LoadTestConfig() csconfig.Config {
 	config := csconfig.Config{}
 	maxAge := "1h"
@@ -43,11 +70,9 @@ func LoadTestConfig() csconfig.Config {
 		MaxAge: &maxAge,
 	}
 	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
-	dbconfig := csconfig.DatabaseCfg{
-		Type:   "sqlite",
-		DbPath: filepath.Join(tempDir, "ent"),
-		Flush:  &flushConfig,
-	}
+
+	dbconfig := databaseTestCfg(filepath.Join(tempDir, "ent"), flushConfig)
+
 	apiServerConfig := csconfig.LocalApiServerCfg{
 		ListenURI:    "http://127.0.0.1:8080",
 		DbConfig:     &dbconfig,
@@ -75,11 +100,7 @@ func LoadTestConfigForwardedFor() csconfig.Config {
 		MaxAge: &maxAge,
 	}
 	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
-	dbconfig := csconfig.DatabaseCfg{
-		Type:   "sqlite",
-		DbPath: filepath.Join(tempDir, "ent"),
-		Flush:  &flushConfig,
-	}
+	dbconfig := databaseTestCfg(filepath.Join(tempDir, "ent"), flushConfig)
 	apiServerConfig := csconfig.LocalApiServerCfg{
 		ListenURI:              "http://127.0.0.1:8080",
 		DbConfig:               &dbconfig,
@@ -340,11 +361,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 		MaxAge: &maxAge,
 	}
 	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
-	dbconfig := csconfig.DatabaseCfg{
-		Type:   "sqlite",
-		DbPath: filepath.Join(tempDir, "ent"),
-		Flush:  &flushConfig,
-	}
+	dbconfig := databaseTestCfg(filepath.Join(tempDir, "ent"), flushConfig)
 	cfg := csconfig.LocalApiServerCfg{
 		ListenURI: "127.0.0.1:8080",
 		LogMedia:  "file",
@@ -398,11 +415,7 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 		MaxAge: &maxAge,
 	}
 	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
-	dbconfig := csconfig.DatabaseCfg{
-		Type:   "sqlite",
-		DbPath: filepath.Join(tempDir, "ent"),
-		Flush:  &flushConfig,
-	}
+	dbconfig := databaseTestCfg(filepath.Join(tempDir, "ent"), flushConfig)
 	cfg := csconfig.LocalApiServerCfg{
 		ListenURI: "127.0.0.1:8080",
 		LogMedia:  "file",

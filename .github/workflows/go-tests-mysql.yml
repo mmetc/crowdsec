@@ -1,5 +1,5 @@
 ---
-name: Go tests (sqlite + coverage)
+name: Go tests (mysql)
 
 # these env variables are for localstack, so we can emulate aws services
 env:
@@ -12,9 +12,22 @@ env:
   # and to override our endpoint in aws sdk
   AWS_ENDPOINT_FORCE: http://localhost:4566
   KINESIS_INITIALIZE_STREAMS: "stream-1-shard:1,stream-2-shards:2"
+  DB_HOST: "127.0.0.1"
+  DB_NAME_SERVER: "crowdsec_server"
+  DB_NAME_CLIENT: "crowdsec_client"
+  DB_PORT: 3306
+  DB_USER: "root"
+  DB_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
 
 on:
   workflow_call:
+    inputs:
+      database_image:
+        required: true
+        type: string
+    secrets:
+      DATABASE_PASSWORD:
+        required: true
 
 jobs:
 
@@ -22,6 +35,15 @@ jobs:
     name: "Build + tests"
     runs-on: ubuntu-latest
     services:
+
+      database:
+        image: ${{ inputs.database_image }}
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ env.DB_PASSWORD }}
+          MYSQL_DATABASE: ${{ env.DB_NAME_SERVER }}
+        ports:
+        - 3306:3306
+
       localstack:
         image: localstack/localstack:0.13.3
         ports:
@@ -47,6 +69,9 @@ jobs:
 
     steps:
 
+    - name: Create the client db
+      run: mysql --host=${{ env.DB_HOST }} --port=${{ env.DB_PORT }} --user=${{ env.DB_USER }} --password="${{ env.DB_PASSWORD }}" -e "CREATE DATABASE IF NOT EXISTS ${{ env.DB_NAME_CLIENT }};"
+
     - name: "Set up Go 1.17"
       uses: actions/setup-go@v3
       with:
@@ -65,6 +90,23 @@ jobs:
     - name: "Run tests"
       run: |
         go run github.com/ory/go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models
+      env:
+        CROWDSEC_TEST_SERVER_DB_TYPE: mysql
+        CROWDSEC_TEST_SERVER_DB_HOST: ${{ env.DB_HOST }}
+        CROWDSEC_TEST_SERVER_DB_NAME: ${{ env.DB_NAME_SERVER }}
+        CROWDSEC_TEST_SERVER_DB_PORT: ${{ env.DB_PORT }}
+        CROWDSEC_TEST_SERVER_DB_PASSWORD: ${{ env.DB_PASSWORD }}
+        CROWDSEC_TEST_SERVER_DB_USER: ${{ env.DB_USER }}
+        CROWDSEC_TEST_CLIENT_DB_TYPE: mysql
+        CROWDSEC_TEST_CLIENT_DB_HOST: ${{ env.DB_HOST }}
+        CROWDSEC_TEST_CLIENT_DB_NAME: ${{ env.DB_NAME_CLIENT}}
+        CROWDSEC_TEST_CLIENT_DB_PORT: ${{ env.DB_PORT }}
+        CROWDSEC_TEST_CLIENT_DB_PASSWORD: ${{ env.DB_PASSWORD }}
+        CROWDSEC_TEST_CLIENT_DB_USER: ${{ env.DB_USER }}
+
+    - name: "Show database logs"
+      run: docker logs "${{ job.services.database.id }}"
+      if: ${{ always() }}
 
     - name: Upload unit coverage to Codecov
       uses: codecov/codecov-action@v2
