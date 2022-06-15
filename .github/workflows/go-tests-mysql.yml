@@ -89,7 +89,7 @@ jobs:
 
     - name: "Run tests"
       run: |
-        go run github.com/ory/go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models
+        go run github.com/ory/go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models -- -v
       env:
         CROWDSEC_TEST_SERVER_DB_TYPE: mysql
         CROWDSEC_TEST_SERVER_DB_HOST: ${{ env.DB_HOST }}
