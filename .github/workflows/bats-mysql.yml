@@ -71,6 +71,15 @@ jobs:
         MYSQL_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
         MYSQL_USER: root
 
+    - name: Show database dump
+      run: mysqldump --databases crowdsec_test
+      env:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_PORT: 3306
+        MYSQL_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        MYSQL_USER: root
+      if: ${{ always() }}
+
     - name: "Show crowdsec logs"
       run:
         for file in $(find ./tests/local/var/log -type f); do echo ">>>>> $file"; cat $file; echo; done
