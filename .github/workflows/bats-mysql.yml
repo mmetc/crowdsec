@@ -72,12 +72,7 @@ jobs:
         MYSQL_USER: root
 
     - name: Show database dump
-      run: mysqldump --databases crowdsec_test
-      env:
-        MYSQL_HOST: 127.0.0.1
-        MYSQL_PORT: 3306
-        MYSQL_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-        MYSQL_USER: root
+      run: ./tests/instance-db dump /dev/fd/1
       if: ${{ always() }}
 
     - name: "Show crowdsec logs"
