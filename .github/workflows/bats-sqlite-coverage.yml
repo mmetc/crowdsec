@@ -43,7 +43,8 @@ jobs:
 
     - name: "Run tests"
       run: |
-        TEST_COVERAGE=true make bats-test
+        # TEST_COVERAGE=true make bats-test
+        TEST_COVERAGE=true ./tests/run-tests tests/bats/99_lapi-stream-mode-scenario.bats
 
     - name: "Show database dump"
       run: |
