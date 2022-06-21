@@ -4,10 +4,6 @@
 # https://github.com/bats-core/bats-core/blob/master/docs/source/warnings/BW02.rst
 bats_require_minimum_version 1.5.0
 
-# this should have effect globally, for all tests
-# https://github.com/bats-core/bats-core/blob/master/docs/source/warnings/BW02.rst
-bats_require_minimum_version 1.5.0
-
 debug() {
     echo 'exec 1<&-; exec 2<&-; exec 1>&3; exec 2>&1'
 }
@@ -126,8 +122,10 @@ is_db_sqlite() {
 }
 export -f is_db_sqlite
 
-# compare ignoring the key order, and allow "expected" without quoted identifiers
+# Compare ignoring the key order, and allow "expected" without quoted identifiers.
+# Preserve the output variable in case the following commands require it.
 assert_json() {
+    oldout="${output}"
     # validate actual, sort
     run -0 jq -Sen "${output}"
     local actual="${output}"
@@ -149,10 +147,20 @@ assert_json() {
         diff <(echo "${actual}") <(echo "${expected}")
         fail "json does not match"
     fi
+    output="${oldout}"
 }
 export -f assert_json
 
 assert_stderr() {
+    # it is never useful to call this without arguments
+    if [[ "$#" -eq 0 ]]; then
+        # maybe the caller forgot to use '-' with an heredoc
+        if [[ ! -t 0 ]]; then
+            fail "${FUNCNAME[0]}: called with stdin and no arguments (heredoc?)"
+        fi
+        fail "${FUNCNAME[0]}: called with no arguments"
+    fi
+
     oldout="${output}"
     run -0 echo "${stderr}"
     assert_output "$@"
@@ -161,6 +169,11 @@ assert_stderr() {
 export -f assert_stderr
 
 refute_stderr() {
+    # calling this without arguments is ok, as long as stdin in empty
+    if [[ ! -t 0 ]]; then
+        fail "${FUNCNAME[0]}: called with stdin (heredoc?)"
+    fi
+
     oldout="${output}"
     run -0 echo "${stderr}"
     refute_output "$@"
@@ -169,6 +182,9 @@ refute_stderr() {
 export -f refute_stderr
 
 assert_stderr_line() {
+    if [[ "$#" -eq 0 ]]; then
+        fail "${FUNCNAME[0]}: called with no arguments"
+    fi
     oldout="${output}"
     run -0 echo "${stderr}"
     assert_line "$@"

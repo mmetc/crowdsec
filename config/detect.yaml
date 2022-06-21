@@ -1,0 +1,396 @@
+---
+version: 1.0
+
+services:
+
+  #
+  # crowdsecurity/apache2
+  #
+
+  # XXX some distro is using this path?
+  #      - /var/log/*http*/*.log
+
+  apache2-systemd-deb:
+    when:
+      - UnitFound("apache2.service")
+      - PathExists("/etc/debian_version")
+    collection: crowdsecurity/apache2
+    acquis:
+      log_files:
+        - /var/log/apache2/*.log
+        # XXX /var/log/*http*/*.log
+      labels:
+        type: apache2
+
+  apache2-systemd-rpm:
+    when:
+      - UnitFound("httpd.service")
+      - PathExists("/etc/redhat-release")
+    collection: crowdsecurity/apache2
+    acquis:
+      log_files:
+        - /var/log/httpd/*.log
+        # XXX /var/log/*http*/*.log
+      labels:
+        type: apache2
+
+  #
+  # crowdsecurity/asterisk
+  #
+
+  asterisk-systemd:
+    when:
+      - UnitFound("asterisk.service")
+    collection: crowdsecurity/asterisk
+    acquis:
+      labels:
+        type: asterisk
+      log_files:
+        - /var/log/asterisk/*.log
+
+  #
+  # crowdsecurity/caddy
+  #
+
+  caddy-systemd:
+    when:
+      - UnitFound("caddy.service")
+    collection: crowdsecurity/caddy
+    acquis:
+      labels:
+        type: caddy
+      log_files:
+        - /var/log/caddy/*.log
+
+  #
+  # crowdsecurity/dovecot
+  #
+
+  dovecot-systemd:
+    when:
+      - UnitFound("dovecot.service")
+    collection: crowdsecurity/dovecot
+    acquis:
+      labels:
+        type: syslog
+      log_files:
+        - /var/log/mail.log
+
+  #
+  # LePresidente/emby
+  #
+
+  emby-systemd:
+    when:
+      - UnitFound("emby-server.service")
+    collection: LePresidente/emby
+    acquis:
+      labels:
+        type: emby
+      log_files:
+        - /var/log/embyserver.txt
+
+  #
+  # crowdsecurity/endlessh
+  #
+
+  endlessh-systemd:
+    when:
+      - UnitFound("endlessh.service")
+    collection: crowdsecurity/endlessh
+    acquis:
+      labels:
+        type: syslog
+      # XXX this? or /var/log/syslog?
+      journalctl_filter:
+        - "_SYSTEMD_UNIT=endlessh.service"
+
+  #
+  # crowdsecurity/gitea
+  #
+
+  # XXX untested
+
+  gitea-systemd:
+    when:
+      - UnitFound("gitea.service")
+    collection: crowdsecurity/gitea
+    acquis:
+      labels:
+        type: gitea
+      log_files:
+        - /var/log/gitea.log
+
+  #
+  # crowdsecurity/haproxy
+  #
+
+  haproxy-systemd:
+    when:
+      - UnitFound("haproxy.service")
+    collection: crowdsecurity/haproxy
+    acquis:
+      labels:
+        type: haproxy
+      log_files:
+        - /var/log/haproxy/*.log
+
+  #
+  # firewallservices/lemonldap-ng
+  #
+
+  lemonldap-ng-systemd:
+    when:
+      - UnitFound("lemonldap-ng-fastcgi-server.service")
+    collection: firewallservices/lemonldap-ng
+    acquis:
+      # XXX todo where are the logs?
+      labels:
+        type: syslog
+
+  #
+  # crowdsecurity/mariadb
+  #
+
+  mariadb-systemd:
+    when:
+      - UnitFound("mariadb.service")
+    collection: crowdsecurity/mariadb
+    acquis:
+      labels:
+        type: mysql
+      log_files:
+        - /var/log/mysql/error.log
+
+  #
+  # crowdsecurity/mysql
+  #
+
+  mysql-systemd:
+    when:
+      - UnitFound("mysql.service")
+    collection: crowdsecurity/mysql
+    acquis:
+      labels:
+        type: mysql
+      log_files:
+        - /var/log/mysql/error.log
+
+  #
+  # crowdsecurity/nginx
+  #
+
+  nginx-systemd:
+    when:
+      - UnitFound("nginx.service")
+    collection: crowdsecurity/nginx
+    acquis:
+      labels:
+        type: nginx
+      log_files:
+        - /var/log/nginx/*.log
+
+  openresty-systemd:
+    when:
+      - UnitFound("openresty.service")
+    collection: crowdsecurity/nginx
+    acquis:
+      labels:
+        type: nginx
+      log_files:
+        - /usr/local/openresty/nginx/logs/*.log
+
+  #
+  # crowdsecurity/odoo
+  #
+
+  odoo-systemd:
+    when:
+      - UnitFound("odoo.service")
+    collection: crowdsecurity/odoo
+    acquis:
+      labels:
+        type: odoo
+      log_files:
+        - /var/log/odoo/*.log
+
+  #
+  # LePresidente/ombi
+  #
+
+  # This only works on deb-based systems. On other distributions, the
+  # application is run from the release tarball and the log location depends on
+  # the location it's run from.
+
+  ombi-systemd:
+    when:
+      - UnitFound("ombi.service")
+      - PathExists("/etc/debian_version")
+    collection: LePresidente/ombi
+    acquis:
+      labels:
+        type: ombi
+      log_files:
+        - /var/log/ombi/log-*.txt
+
+  #
+  # crowdsecurity/pgsql
+  #
+
+  pgsql-systemd-deb:
+    when:
+      - UnitFound("postgresql.service")
+      - PathExists("/etc/debian_version")
+    collection: crowdsecurity/pgsql
+    acquis:
+      labels:
+        type: postgres
+      log_files:
+        - /var/log/postgresql/*.log
+
+  pgsql-systemd-rpm:
+    when:
+      - UnitFound("postgresql.service")
+      - PathExists("/etc/redhat-release")
+    collection: crowdsecurity/pgsql
+    acquis:
+      labels:
+        type: postgres
+      log_files:
+        - /var/lib/pgsql/data/log/*.log
+
+  #
+  # crowdsecurity/postfix
+  #
+
+  postfix-systemd:
+    when:
+      - UnitFound("postfix.service")
+    collection: crowdsecurity/postfix
+    acquis:
+      labels:
+        type: syslog
+      log_files:
+      - /var/log/mail.log
+
+  #
+  # crowdsecurity/proftpd
+  #
+
+  proftpd-systemd:
+    when:
+      - UnitFound("proftpd.service")
+    collection: crowdsecurity/proftpd
+    acquis:
+      labels:
+        type: proftpd
+      log_files:
+      - /var/log/proftpd/*.log
+
+  #
+  # fulljackz/pureftpd
+  #
+
+  pureftpd-systemd:
+    when:
+      - UnitFound("pure-ftpd.service")
+    collection: fulljackz/pureftpd
+    # XXX ?
+    acquis:
+      labels:
+        type: syslog
+      log_files:
+      - /var/log/pure-ftpd/*.log
+
+  #
+  # crowdsecurity/smb
+  #
+
+  smb-systemd:
+    when:
+      # deb -> smbd.service
+      # rpm -> smb.service
+      - UnitFound("smbd.service") or UnitFound("smb.service")
+    collection: crowdsecurity/smb
+    acquis:
+      labels:
+        type: smb
+      log_files:
+        - /var/log/samba*.log
+
+  #
+  # crowdsecurity/sshd
+  #
+
+  sshd-systemd:
+    when:
+      # deb -> ssh.service
+      # rpm -> sshd.service
+      - UnitFound("ssh.service") or UnitFound("sshd.service") or UnitFound("ssh.socket") or UnitFound("sshd.socket")
+    collection: crowdsecurity/sshd
+    acquis:
+      labels:
+        type: syslog
+      log_files:
+        - /var/log/auth.log
+        - /var/log/sshd.log
+        - /var/log/secure
+
+  #
+  # crowdsecurity/suricata
+  #
+
+  suricata-systemd:
+    when:
+      - UnitFound("suricata.service")
+    collection: crowdsecurity/suricata
+    acquis:
+      labels:
+        type: suricata-evelogs
+      log_files:
+        - /var/log/suricata/eve.json
+
+  #
+  # crowdsecurity/vsftpd
+  #
+
+  vsftpd-systemd:
+    when:
+      - UnitFound("vsftpd.service")
+    collection: crowdsecurity/vsftpd
+    acquis:
+      labels:
+        type: vsftpd
+      log_files:
+        - /var/log/vsftpd/*.log
+
+  #
+  # Operating Systems
+  #
+
+  linux:
+    when:
+      - OS.Family == "linux"
+    collection: crowdsecurity/linux
+    acquis:
+      labels:
+        type: syslog
+      log_files:
+      - /var/log/syslog
+      - /var/log/kern.log
+      - /var/log/messages
+
+  freebsd:
+    when:
+      - OS.Family == "freebsd"
+    collection: crowdsecurity/freebsd
+
+  windows:
+    when:
+      - OS.Family == "windows"
+    collection: crowdsecurity/windows
+
+# XXX
+#  whitelists:
+#    collection: crowdsecurity/whitelists
+
