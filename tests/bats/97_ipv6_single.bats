@@ -19,7 +19,6 @@ teardown_file() {
 
 setup() {
     load "../lib/setup.sh"
-    if is_db_mysql; then sleep 0.3; fi
 }
 
 api() {
@@ -150,6 +149,7 @@ api() {
 }
 
 @test "$FILE CLI - decisions for ip/range in 1111:2222:3333:4444:5555:6666:7777:8888/64 after delete" {
+    if is_db_mysql; then sleep 1; fi
     run -0 cscli decisions list -r '1111:2222:3333:4444:5555:6666:7777:8888/64' -o json --contained
     assert_output 'null'
 }
