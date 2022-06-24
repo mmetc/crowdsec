@@ -53,13 +53,19 @@ teardown() {
     ./instance-crowdsec start
     run -0 ./lib/util/wait-for-port -q 8080
     ./instance-crowdsec stop
+    run -1 ./lib/util/wait-for-port -q 8080
 
+    run -0 yq e '.api.client.credentials_path' "${CONFIG_YAML}"
+    LOCAL_API_CREDENTIALS="${output}"
+    echo "{'url':'http://127.0.0.1:8083'}" >"${LOCAL_API_CREDENTIALS}.local"
     echo "{'api':{'server':{'listen_uri':127.0.0.1:8083}}}" >"${CONFIG_YAML}.local"
+
     ./instance-crowdsec start
     run -0 ./lib/util/wait-for-port -q 8083
     run -1 ./lib/util/wait-for-port -q 8080
     ./instance-crowdsec stop
 
+    rm -f "${LOCAL_API_CREDENTIALS}.local"
     rm -f "${CONFIG_YAML}.local"
     ./instance-crowdsec start
     run -1 ./lib/util/wait-for-port -q 8083
