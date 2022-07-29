@@ -13,39 +13,32 @@
   ansible.builtin.set_fact:
     build_bash: "{{ ansible_facts.packages['bash'][0].version is version('4.4', '<') }}"
 
-- name: "build bash: download"
-  become: false
-  ansible.builtin.unarchive:
-    src: http://ftp.gnu.org/gnu/bash/bash-5.1.16.tar.gz
-    dest: "{{ ansible_env.HOME }}"
-    remote_src: true
-    creates: "{{ ansible_env.HOME }}/bash-5.1.16"
-  when:
-    - build_bash
-
-- name: "build bash: configure"
-  become: false
-  ansible.builtin.command:
-    cmd: "./configure --prefix=/opt/bash"
-    creates: ./Makefile
-    chdir: "{{ ansible_env.HOME }}/bash-5.1.16"
-  when:
-    - build_bash
-
-- name: "build bash: create /opt/bash"
-  become: true
-  ansible.builtin.file:
-    path: /opt/bash
-    state: directory
-    mode: 0o755
-  when:
-    - build_bash
-
-- name: "build bash: make install"
-  become: true
-  ansible.builtin.command:
-    cmd: "make install"
-    creates: /opt/bash/bin/bash
-    chdir: "{{ ansible_env.HOME }}/bash-5.1.16"
+- name: "build bash"
+  block:
+    - name: "build bash: download"
+      become: false
+      ansible.builtin.unarchive:
+        src: http://ftp.gnu.org/gnu/bash/bash-5.1.16.tar.gz
+        dest: "{{ ansible_env.HOME }}"
+        remote_src: true
+        creates: "{{ ansible_env.HOME }}/bash-5.1.16"
+    - name: "build bash: configure"
+      become: false
+      ansible.builtin.command:
+        cmd: "./configure --prefix=/opt/bash"
+        creates: ./Makefile
+        chdir: "{{ ansible_env.HOME }}/bash-5.1.16"
+    - name: "build bash: create /opt/bash"
+      become: true
+      ansible.builtin.file:
+        path: /opt/bash
+        state: directory
+        mode: 0o755
+    - name: "build bash: make install"
+      become: true
+      ansible.builtin.command:
+        cmd: "make install"
+        creates: /opt/bash/bin/bash
+        chdir: "{{ ansible_env.HOME }}/bash-5.1.16"
   when:
     - build_bash
