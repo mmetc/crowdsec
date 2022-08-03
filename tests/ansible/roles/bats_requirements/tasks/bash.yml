@@ -1,17 +1,17 @@
 ---
-- name: "look up bash version"
+- name: "check if bash needs building"
   become: false
-  ansible.builtin.package_facts:
-
-- name: "bash version found"
-  become: false
-  ansible.builtin.debug:
-    var: ansible_facts.packages['bash'][0].version
-
-- name: "check if bash needs building (<4.4)"
-  become: false
-  ansible.builtin.set_fact:
-    build_bash: "{{ ansible_facts.packages['bash'][0].version is version('4.4', '<') }}"
+  block:
+    - name: "look up bash version"
+      ansible.builtin.package_facts:
+    - name: "bash version found"
+      ansible.builtin.debug:
+        var: ansible_facts.packages['bash'][0].version
+    - name: "check if bash needs building (<4.4)"
+      ansible.builtin.set_fact:
+        build_bash: "{{ ansible_facts.packages['bash'][0].version is version('4.4', '<') }}"
+  when:
+    - ansible_facts.system != "NetBSD"
 
 - name: "build bash"
   block:
@@ -41,4 +41,4 @@
         creates: /opt/bash/bin/bash
         chdir: "{{ ansible_env.HOME }}/bash-5.1.16"
   when:
-    - build_bash
+    - build_bash | default(False)

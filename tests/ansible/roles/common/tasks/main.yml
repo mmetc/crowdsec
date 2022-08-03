@@ -13,6 +13,8 @@
     name:
       - gcc
       - git
+  when:
+    - ansible_facts.system != "NetBSD"
 
 - name: "install make (Linux)"
   become: true

@@ -21,6 +21,7 @@
       - python3
   when:
     - ansible_facts.distribution != 'Gentoo'
+    - ansible_facts.system != 'NetBSD'
 
 - name: "install bc (!freebsd)"
   become: true
