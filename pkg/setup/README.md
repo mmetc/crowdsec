@@ -72,7 +72,7 @@ Identify the existing services and write out what was detected:
 See what was found.
 
 ```sh
-# cscli setup install-collections --from-file setup.yaml --dry-run
+# cscli setup install-collections setup.yaml --dry-run
 dry-run: would install collection crowdsecurity/apache2
 dry-run: would install collection crowdsecurity/linux
 ```
@@ -80,7 +80,7 @@ dry-run: would install collection crowdsecurity/linux
 Install the objects (parsers, scenarios...) required to support the detected services:
 
 ```sh
-# cscli setup install-collections --from-file setup.yaml
+# cscli setup install-collections setup.yaml
 INFO[29-06-2022 03:16:14 PM] crowdsecurity/apache2-logs : OK              
 INFO[29-06-2022 03:16:14 PM] Enabled parsers : crowdsecurity/apache2-logs 
 INFO[29-06-2022 03:16:14 PM] crowdsecurity/http-logs : OK             
@@ -91,7 +91,7 @@ INFO[29-06-2022 03:16:18 PM] Enabled crowdsecurity/linux
 Generate the log acquisition configuration:
 
 ```sh
-# cscli setup generate-acquis --from-file setup.yaml --to-dir /etc/crowdsec/acquis.d
+# cscli setup generate-acquis setup.yaml --to-dir /etc/crowdsec/acquis.d
 ```
 
 
@@ -186,7 +186,7 @@ Leading zeroes are permitted, to allow comparison of Ubuntu versions: strict sem
 The `setup.yaml` file
 =====================
 
-This files does not actually have a defined name, as it's usually generated to standard output and consumed via the `--from-file` flag.
+This files does not actually have a defined name, as it's usually generated to standard output.
 
 For example, on a Linux system running Apache under systemd you can execute:
 
@@ -209,7 +209,7 @@ setup:
         - /var/log/messages
 ```
 
-The default output format is json, which is compatible with Yaml but less readable in an example.
+The default output format is JSON, which is compatible with YAML but less readable to humans.
 
 
  - `detected_service`: used to generate a name for the files written to `acquis.d`
@@ -224,10 +224,9 @@ $ setup generate-acquis --help
 generate acquisition config from the output of 'setup detect'
 
 Usage:
-  cscli setup generate-acquis [flags]
+  cscli setup generate-acquis [setup_file] [flags]
 
 Flags:
-      --from-file string   path to the 'setup detect' output
       --to-dir string      write the acquisition configuration to a directory, in multiple files
 ```
 
@@ -240,7 +239,7 @@ The acquis.yaml files
 By default, a monolithic `acquis.yaml` file is printed on standard output:
 
 ```yaml
-# cscli setup generate-acquis --from-file setup.yaml
+# cscli setup generate-acquis setup.yaml
 source: journalctl
 journalctl_filter:
     - _SYSTEMD_UNIT=mock-apache2.service
@@ -260,7 +259,7 @@ labels:
 For ease of maintenance, it is recommended to provide a `--to-dir` flag, in this case each service has its own acquis file:
 
 ```yaml
-# cscli setup generate-acquis --from-file setup.yaml --to-dir /tmp/acquis.d
+# cscli setup generate-acquis setup.yaml --to-dir /tmp/acquis.d
 # cat /tmp/acquis.d/setup.apache2-systemd.systemd.yaml 
 source: journalctl
 journalctl_filter:

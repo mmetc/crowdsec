@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -18,8 +17,8 @@ import (
 func NewSetupCmd() *cobra.Command {
 	cmdSetup := &cobra.Command{
 		Use:               "setup",
-		Short:             "(Un)Install/Configure crowdsec",
-		Long:              "Manage crowdsec installation and removal, configuration and service detection",
+		Short:             "Tools to configure crowdsec",
+		Long:              "Manage hub configuration and service detection",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
 	}
@@ -30,7 +29,7 @@ func NewSetupCmd() *cobra.Command {
 	{
 		cmdSetupDetect := &cobra.Command{
 			Use:               "detect",
-			Short:             "detect running services supported by crowdsec, generate a setup file",
+			Short:             "detect running services, generate a setup file",
 			DisableAutoGenTag: true,
 			RunE:              runSetupDetect,
 		}
@@ -51,20 +50,19 @@ func NewSetupCmd() *cobra.Command {
 	}
 
 	//
-	// cscli setup install-collection
+	// cscli setup install-collections
 	//
 	{
 		cmdSetupInstallCollections := &cobra.Command{
-			Use:               "install-collections",
+			Use:               "install-collections [setup_file] [flags]",
 			Short:             "install items from a setup file",
+			Args:              cobra.MinimumNArgs(1),
 			DisableAutoGenTag: true,
 			RunE:              runSetupInstallCollections,
 		}
 
 		flags := cmdSetupInstallCollections.Flags()
-		flags.String("from-file", "", "path to the 'setup detect' output")
 		flags.Bool("dry-run", false, "don't install anything; print out what would have been")
-		cmdSetupInstallCollections.MarkFlagRequired("from-file")
 		cmdSetup.AddCommand(cmdSetupInstallCollections)
 	}
 
@@ -73,16 +71,15 @@ func NewSetupCmd() *cobra.Command {
 	//
 	{
 		cmdSetupGenerateAcquis := &cobra.Command{
-			Use:               "generate-acquis",
+			Use:               "generate-acquis [setup_file] [flags]",
 			Short:             "generate acquisition config from a setup file",
+			Args:              cobra.MinimumNArgs(1),
 			DisableAutoGenTag: true,
 			RunE:              runSetupGenerateAcquis,
 		}
 
 		flags := cmdSetupGenerateAcquis.Flags()
-		flags.String("from-file", "", "path to the 'setup detect' output")
 		flags.String("to-dir", "", "write the acquisition configuration to a directory, in multiple files")
-		cmdSetupGenerateAcquis.MarkFlagRequired("from-file")
 		cmdSetup.AddCommand(cmdSetupGenerateAcquis)
 	}
 
@@ -91,8 +88,9 @@ func NewSetupCmd() *cobra.Command {
 	//
 	{
 		cmdSetupValidate := &cobra.Command{
-			Use:               "validate",
-			Short:             "validate a setup file'",
+			Use:               "validate [setup_file]",
+			Short:             "validate a setup file",
+			Args:              cobra.MinimumNArgs(1),
 			DisableAutoGenTag: true,
 			RunE:              runSetupValidate,
 		}
@@ -227,10 +225,7 @@ func setupAsString(cs setup.SetupEnvelope, outYaml bool) (string, error) {
 func runSetupGenerateAcquis(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
-	fromFile, err := flags.GetString("from-file")
-	if err != nil {
-		return err
-	}
+	fromFile := args[0]
 
 	toDir, err := flags.GetString("to-dir")
 	if err != nil {
@@ -257,10 +252,7 @@ func runSetupGenerateAcquis(cmd *cobra.Command, args []string) error {
 func runSetupInstallCollections(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
-	fromFile, err := flags.GetString("from-file")
-	if err != nil {
-		return err
-	}
+	fromFile := args[0]
 
 	dryRun, err := flags.GetBool("dry-run")
 	if err != nil {
@@ -280,7 +272,8 @@ func runSetupInstallCollections(cmd *cobra.Command, args []string) error {
 }
 
 func runSetupValidate(cmd *cobra.Command, args []string) error {
-	input, err := io.ReadAll(os.Stdin)
+	fromFile := args[0]
+	input, err := os.ReadFile(fromFile)
 	if err != nil {
 		return fmt.Errorf("while reading stdin: %w", err)
 	}

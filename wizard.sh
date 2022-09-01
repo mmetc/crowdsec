@@ -404,12 +404,12 @@ detect_and_install_collections() {
     fi
 
     echo "Installing collections...."
-    "$CSCLI_BIN_INSTALLED" setup install-collections --from-file "$tmp_file"
+    "$CSCLI_BIN_INSTALLED" setup install-collections "$tmp_file"
 
     mkdir -p "$ACQUIS_DIR"
 
     echo "Generating acquisition files..."
-    "$CSCLI_BIN_INSTALLED" setup generate-acquis --to-dir "$ACQUIS_DIR" --from-file "$tmp_file"
+    "$CSCLI_BIN_INSTALLED" setup generate-acquis "$tmp_file" --to-dir "$ACQUIS_DIR"
 
     echo "Done"
 

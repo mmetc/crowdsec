@@ -45,5 +45,5 @@ setup() {
 
 @test "apache2: install detected collection" {
     run -0 cscli setup detect
-    run -0 cscli setup install-collections --from-file <(output)
+    run -0 cscli setup install-collections <(output)
 }

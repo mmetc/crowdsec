@@ -35,13 +35,13 @@ teardown() {
 #shellcheck disable=SC2154
 @test "cscli setup" {
     run -0 cscli help
-    assert_line --regexp '^ +setup +\(Un\)Install/Configure crowdsec$'
+    assert_line --regexp '^ +setup +Tools to configure crowdsec$'
 
     run -0 cscli setup --help
     assert_line 'Usage:'
     assert_line '  cscli setup [command]'
-    assert_line 'Manage crowdsec installation and removal, configuration and service detection'
-    assert_line --partial "detect              detect running services supported by crowdsec, generate a setup file"
+    assert_line 'Manage hub configuration and service detection'
+    assert_line --partial "detect              detect running services, generate a setup file"
     assert_line --partial "generate-acquis     generate acquisition config from a setup file"
     assert_line --partial "install-collections install items from a setup file"
     assert_line --partial "validate            validate a setup file"
@@ -53,7 +53,7 @@ teardown() {
 
 @test "cscli setup detect --help; --detect-config" {
     run -0 cscli setup detect --help
-    assert_line --regexp "detect running services supported by crowdsec"
+    assert_line --regexp "detect running services, generate a setup file"
     assert_line 'Usage:'
     assert_line '  cscli setup detect [flags]'
     assert_line --partial "--detect-config string      path to service detection configuration (default \"${HUB_DIR}/detect.yaml\")"
@@ -363,7 +363,6 @@ update-notifier-motd.timer              enabled enabled
 
 @test "cscli setup install-collections" {
     run -0 cscli setup install-collections --help
-    assert_line --partial "--from-file string   path to the 'setup detect' output"
 
     # it's not installed
     run -0 cscli collections list -o json
@@ -371,7 +370,7 @@ update-notifier-motd.timer              enabled enabled
     refute_line "crowdsecurity/apache2"
 
     # we install it
-    run -0 cscli setup install-collections --from-file /dev/stdin <<< '{"setup":[{"collection":"crowdsecurity/apache2"}]}'
+    run -0 cscli setup install-collections /dev/stdin <<< '{"setup":[{"collection":"crowdsecurity/apache2"}]}'
 
     # now it's installed
     run -0 cscli collections list -o json
@@ -386,7 +385,7 @@ update-notifier-motd.timer              enabled enabled
     refute_line "crowdsecurity/apache2"
 
     # we install it
-    run -0 --separate-stderr cscli setup install-collections --from-file /dev/stdin --dry-run <<< '{"setup":[{"collection":"crowdsecurity/apache2"}]}'
+    run -0 --separate-stderr cscli setup install-collections /dev/stdin --dry-run <<< '{"setup":[{"collection":"crowdsecurity/apache2"}]}'
     assert_output 'dry-run: would install collection crowdsecurity/apache2'
 
     # still not installed
@@ -397,12 +396,11 @@ update-notifier-motd.timer              enabled enabled
 
 @test "cscli setup generate-acquis" {
     run -0 cscli setup generate-acquis --help
-    assert_line --partial "--from-file string   path to the 'setup detect' output"
-    assert_line --partial "--to-dir string      write the acquisition configuration to a directory, in multiple files"
+    assert_line --partial "--to-dir string   write the acquisition configuration to a directory, in multiple files"
 
     # single item
 
-    run -0 cscli setup generate-acquis --from-file /dev/stdin <<-EOT
+    run -0 cscli setup generate-acquis /dev/stdin <<-EOT
 	setup:
 	  - acquis:
 	      labels:
@@ -425,7 +423,7 @@ update-notifier-motd.timer              enabled enabled
 
     # multiple items
 
-    run -0 cscli setup generate-acquis --from-file /dev/stdin <<-EOT
+    run -0 cscli setup generate-acquis /dev/stdin <<-EOT
 	setup:
 	  - acquis:
 	      labels:
@@ -474,7 +472,7 @@ update-notifier-motd.timer              enabled enabled
     acquisdir=$(TMPDIR="$BATS_FILE_TMPDIR" mktemp -u)
     mkdir "$acquisdir"
 
-    run -0 cscli setup generate-acquis --from-file /dev/stdin --to-dir "$acquisdir" <<-EOT
+    run -0 cscli setup generate-acquis /dev/stdin --to-dir "$acquisdir" <<-EOT
 	setup:
 	  - detected_service: apache2
 	    acquis:
@@ -534,7 +532,7 @@ update-notifier-motd.timer              enabled enabled
 
     # having both log_files and journalctl generates two files
 
-    run -0 cscli setup generate-acquis --from-file /dev/stdin --to-dir "$acquisdir" <<-EOT
+    run -0 cscli setup generate-acquis /dev/stdin --to-dir "$acquisdir" <<-EOT
 	setup:
 	  - detected_service: apache2
 	    collection: crowdsecurity/apache2
@@ -570,14 +568,14 @@ update-notifier-motd.timer              enabled enabled
 	EOT
 
     # the directory must exist
-    run -1 --separate-stderr cscli setup generate-acquis --from-file /dev/stdin --to-dir /path/does/not/exist <<< '{}'
+    run -1 --separate-stderr cscli setup generate-acquis /dev/stdin --to-dir /path/does/not/exist <<< '{}'
     assert_stderr --partial "directory /path/does/not/exist does not exist"
 
     # of course it must be a directory
 
     touch "${acquisdir}/notadir"
 
-    run -1 --separate-stderr cscli setup generate-acquis --from-file /dev/stdin --to-dir "${acquisdir}/notadir" <<-EOT
+    run -1 --separate-stderr cscli setup generate-acquis /dev/stdin --to-dir "${acquisdir}/notadir" <<-EOT
 	setup:
 	  - detected_service: apache2
 	    acquis:
@@ -607,7 +605,7 @@ update-notifier-motd.timer              enabled enabled
     run -0 cscli setup detect --detect-config "$tempfile" --force-unit thewiz.service
     run -0 jq -cS '.' <(output)
     assert_json '{"setup":[{"acquis":{"journalctl_filter":["SYSLOG_IDENTIFIER=TheWiz"],"labels":{"type":"thewiz"}},"detected_service":"thewiz"}]}'
-    run -0 cscli setup generate-acquis --from-file <(output)
+    run -0 cscli setup generate-acquis <(output)
     assert_output - <<-EOT
 	source: journalctl
 	journalctl_filter:
@@ -622,18 +620,18 @@ update-notifier-motd.timer              enabled enabled
 @test "cscli setup validate" {
 
     # an empty file is not enough
-    run -1 --separate-stderr cscli setup validate </dev/null
+    run -1 --separate-stderr cscli setup validate /dev/null
     assert_output "EOF"
     assert_stderr --partial "invalid setup file"
 
     # this is ok; install nothing
-    run -0 --separate-stderr cscli setup validate <<-EOT
+    run -0 --separate-stderr cscli setup validate /dev/stdin <<-EOT
 	setup:
 	EOT
     refute_output
     refute_stderr
 
-    run -1 --separate-stderr cscli setup validate <<-EOT
+    run -1 --separate-stderr cscli setup validate /dev/stdin <<-EOT
 	se tup:
 	EOT
     assert_output - <<-EOT
@@ -643,7 +641,7 @@ update-notifier-motd.timer              enabled enabled
 	EOT
     assert_stderr --partial "invalid setup file"
 
-    run -1 --separate-stderr cscli setup validate <<-EOT
+    run -1 --separate-stderr cscli setup validate /dev/stdin <<-EOT
 	setup:
 	alsdk al; sdf
 	EOT
