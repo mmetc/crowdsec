@@ -86,8 +86,6 @@ type DetectConfig struct {
 
 // ExprState keeps a global state for the duration of the service detection (cache etc.)
 type ExprState struct {
-	// XXX better msg if systemctl has already been called, we can avoid
-	// calling it a second time.
 	unitsSearched map[string]bool
 	// slice of unit names that we want to force-detect
 	forcedUnits []string

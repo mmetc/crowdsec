@@ -280,12 +280,10 @@ labels:
 Plans
 -----
 
- - github.com/rivo/tview for interactive confirmation
- - support for systemd states
  - windows something
  - skip systemd checks if not installed
  - option to replace acquis sections installed by wizard.sh
- - basic support for derived linux distributions
+ - better support for derived linux distributions
 
 Open questions
 --------------

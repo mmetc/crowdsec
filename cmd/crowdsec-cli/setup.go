@@ -56,7 +56,7 @@ func NewSetupCmd() *cobra.Command {
 		cmdSetupInstallCollections := &cobra.Command{
 			Use:               "install-collections [setup_file] [flags]",
 			Short:             "install items from a setup file",
-			Args:              cobra.MinimumNArgs(1),
+			Args:              cobra.ExactArgs(1),
 			DisableAutoGenTag: true,
 			RunE:              runSetupInstallCollections,
 		}
@@ -73,7 +73,7 @@ func NewSetupCmd() *cobra.Command {
 		cmdSetupGenerateAcquis := &cobra.Command{
 			Use:               "generate-acquis [setup_file] [flags]",
 			Short:             "generate acquisition config from a setup file",
-			Args:              cobra.MinimumNArgs(1),
+			Args:              cobra.ExactArgs(1),
 			DisableAutoGenTag: true,
 			RunE:              runSetupGenerateAcquis,
 		}
@@ -90,7 +90,7 @@ func NewSetupCmd() *cobra.Command {
 		cmdSetupValidate := &cobra.Command{
 			Use:               "validate [setup_file]",
 			Short:             "validate a setup file",
-			Args:              cobra.MinimumNArgs(1),
+			Args:              cobra.ExactArgs(1),
 			DisableAutoGenTag: true,
 			RunE:              runSetupValidate,
 		}

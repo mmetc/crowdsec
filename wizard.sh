@@ -86,6 +86,7 @@ set_colors() {
     fi
 }
 
+#XXX logging is not consistent
 log_info() {
     msg=$1
     date=$(date +%x:%X)
