@@ -55,7 +55,7 @@ PLUGIN_CONFIGURATION_DEST="/etc/crowdsec/notifications"
 PLUGIN_BINARIES_SRC="./plugins/notifications"
 PLUGIN_BINARIES_DEST="${CROWDSEC_USR_DIR}/plugins"
 
-# XXX WTH
+# XXX WTH should remove it later
 BACKUP_DIR=$(mktemp -d)
 rm -rf -- "$BACKUP_DIR"
 
