@@ -7,11 +7,11 @@ func isValidIP(ip string) bool {
 }
 
 func IsAlphaNumeric(c byte) bool {
-	return 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' || '0' <= c && c <= '9'
+	return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9')
 }
 
-//This function is lifted from go source
-//See https://github.com/golang/go/blob/master/src/net/dnsclient.go#L75
+// This function is lifted from go source
+// See https://github.com/golang/go/blob/master/src/net/dnsclient.go#L75
 func isValidHostname(s string) bool {
 	// The root domain name is valid. See golang.org/issue/45715.
 	if s == "." {
@@ -27,7 +27,7 @@ func isValidHostname(s string) bool {
 	// So our _effective_ maximum is 253, but 254 is not rejected if the last
 	// character is a dot.
 	l := len(s)
-	if l == 0 || l > 254 || l == 254 && s[l-1] != '.' {
+	if (l == 0) || (l > 254) || (l == 254 && s[l-1] != '.') {
 		return false
 	}
 
@@ -39,10 +39,10 @@ func isValidHostname(s string) bool {
 		switch {
 		default:
 			return false
-		case 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' || c == '_':
+		case ('a' <= c) && (c <= 'z') || ('A' <= c) && (c <= 'Z') || (c == '_'):
 			nonNumeric = true
 			partlen++
-		case '0' <= c && c <= '9':
+		case ('0' <= c) && (c <= '9'):
 			// fine
 			partlen++
 		case c == '-':
@@ -54,17 +54,17 @@ func isValidHostname(s string) bool {
 			nonNumeric = true
 		case c == '.':
 			// Byte before dot cannot be dot, dash.
-			if last == '.' || last == '-' {
+			if (last == '.') || (last == '-') {
 				return false
 			}
-			if partlen > 63 || partlen == 0 {
+			if (partlen > 63) || (partlen == 0) {
 				return false
 			}
 			partlen = 0
 		}
 		last = c
 	}
-	if last == '-' || partlen > 63 {
+	if (last == '-') || (partlen > 63) {
 		return false
 	}
 

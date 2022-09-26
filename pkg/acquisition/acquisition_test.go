@@ -90,6 +90,7 @@ func TestDataSourceConfigure(t *testing.T) {
 		TestName      string
 		RawBytes      []byte
 		ExpectedError string
+		AssertMock    func(*testing.T, *DataSource)
 	}{
 		{
 			TestName: "basic_valid_config",
@@ -101,6 +102,13 @@ log_level: info
 source: mock
 toto: test_value1
 `),
+			AssertMock: func(t *testing.T, ds *DataSource) {
+				mock := (*ds).Dump().(*MockSource)
+				assert.Equal(t, mock.Toto, "test_value1")
+				assert.Equal(t, mock.Mode, "cat")
+				assert.Equal(t, mock.logger.Logger.Level, log.InfoLevel)
+				assert.DeepEqual(t, mock.Labels, map[string]string{"test": "foobar"})
+			},
 		},
 		{
 			TestName: "basic_debug_config",
@@ -112,6 +120,13 @@ log_level: debug
 source: mock
 toto: test_value1
 `),
+			AssertMock: func(t *testing.T, ds *DataSource) {
+				mock := (*ds).Dump().(*MockSource)
+				assert.Equal(t, mock.Toto, "test_value1")
+				assert.Equal(t, mock.Mode, "cat")
+				assert.Equal(t, mock.logger.Logger.Level, log.DebugLevel)
+				assert.DeepEqual(t, mock.Labels, map[string]string{"test": "foobar"})
+			},
 		},
 		{
 			TestName: "basic_tailmode_config",
@@ -123,6 +138,13 @@ log_level: debug
 source: mock
 toto: test_value1
 `),
+			AssertMock: func(t *testing.T, ds *DataSource) {
+				mock := (*ds).Dump().(*MockSource)
+				assert.Equal(t, mock.Toto, "test_value1")
+				assert.Equal(t, mock.Mode, "tail")
+				assert.Equal(t, mock.logger.Logger.Level, log.DebugLevel)
+				assert.DeepEqual(t, mock.Labels, map[string]string{"test": "foobar"})
+			},
 		},
 		{
 			TestName: "bad_mode_config",
@@ -174,42 +196,16 @@ wowo: ajsajasjas
 	}
 
 	for _, test := range tests {
-		common := configuration.DataSourceCommonCfg{}
-		yaml.Unmarshal(test.RawBytes, &common)
-		ds, err := DataSourceConfigure(common)
-		if test.ExpectedError != "" {
-			if err == nil {
-				t.Fatalf("expected error %s, got none", test.ExpectedError)
-			}
-			if !strings.Contains(err.Error(), test.ExpectedError) {
-				t.Fatalf("%s : expected error '%s' in '%s'", test.TestName, test.ExpectedError, err)
-			}
-			continue
-		}
-		if err != nil {
-			t.Fatalf("%s : unexpected error '%s'", test.TestName, err)
-		}
+		t.Run(test.TestName, func(t *testing.T) {
+			common := configuration.DataSourceCommonCfg{}
+			yaml.Unmarshal(test.RawBytes, &common)
+			ds, err := DataSourceConfigure(common)
+			cstest.RequireErrorContains(t, err, test.ExpectedError)
 
-		switch test.TestName {
-		case "basic_valid_config":
-			mock := (*ds).Dump().(*MockSource)
-			assert.Equal(t, mock.Toto, "test_value1")
-			assert.Equal(t, mock.Mode, "cat")
-			assert.Equal(t, mock.logger.Logger.Level, log.InfoLevel)
-			assert.DeepEqual(t, mock.Labels, map[string]string{"test": "foobar"})
-		case "basic_debug_config":
-			mock := (*ds).Dump().(*MockSource)
-			assert.Equal(t, mock.Toto, "test_value1")
-			assert.Equal(t, mock.Mode, "cat")
-			assert.Equal(t, mock.logger.Logger.Level, log.DebugLevel)
-			assert.DeepEqual(t, mock.Labels, map[string]string{"test": "foobar"})
-		case "basic_tailmode_config":
-			mock := (*ds).Dump().(*MockSource)
-			assert.Equal(t, mock.Toto, "test_value1")
-			assert.Equal(t, mock.Mode, "tail")
-			assert.Equal(t, mock.logger.Logger.Level, log.DebugLevel)
-			assert.DeepEqual(t, mock.Labels, map[string]string{"test": "foobar"})
-		}
+			if test.AssertMock != nil {
+				test.AssertMock(t, ds)
+			}
+		})
 	}
 }
 
@@ -281,23 +277,14 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		dss, err := LoadAcquisitionFromFile(&test.Config)
-		if test.ExpectedError != "" {
-			if err == nil {
-				t.Fatalf("expected error %s, got none", test.ExpectedError)
+		t.Run(test.TestName, func(t *testing.T) {
+			dss, err := LoadAcquisitionFromFile(&test.Config)
+			cstest.RequireErrorContains(t, err, test.ExpectedError)
+			if test.ExpectedError != "" {
+				return
 			}
-			if !strings.Contains(err.Error(), test.ExpectedError) {
-				t.Fatalf("%s : expected error '%s' in '%s'", test.TestName, test.ExpectedError, err)
-			}
-			continue
-		}
-		if err != nil {
-			t.Fatalf("%s : unexpected error '%s'", test.TestName, err)
-		}
-		if len(dss) != test.ExpectedLen {
-			t.Fatalf("%s : expected %d datasources got %d", test.TestName, test.ExpectedLen, len(dss))
-		}
-
+			assert.Equal(t, len(dss), test.ExpectedLen, "wrong number of datasources")
+		})
 	}
 }
 
@@ -332,6 +319,7 @@ func (f *MockCat) OneShotAcquisition(out chan types.Event, tomb *tomb.Tomb) erro
 	}
 	return nil
 }
+
 func (f *MockCat) StreamingAcquisition(chan types.Event, *tomb.Tomb) error {
 	return fmt.Errorf("can't run in tail")
 }
@@ -365,6 +353,7 @@ func (f *MockTail) GetMode() string { return "tail" }
 func (f *MockTail) OneShotAcquisition(out chan types.Event, tomb *tomb.Tomb) error {
 	return fmt.Errorf("can't run in cat mode")
 }
+
 func (f *MockTail) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	for i := 0; i < 10; i++ {
 		evt := types.Event{}
@@ -382,7 +371,7 @@ func (f *MockTail) ConfigureByDSN(string, map[string]string, *log.Entry) error {
 	return fmt.Errorf("not supported")
 }
 
-//func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
+// func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
 
 func TestStartAcquisitionCat(t *testing.T) {
 	sources := []DataSource{
@@ -421,7 +410,7 @@ func TestStartAcquisitionTail(t *testing.T) {
 
 	go func() {
 		if err := StartAcquisition(sources, out, &acquisTomb); err != nil {
-			t.Errorf("unexpected error")
+			t.Error("unexpected error")
 		}
 	}()
 
@@ -435,9 +424,11 @@ READLOOP:
 			break READLOOP
 		}
 	}
+
 	if count != 10 {
 		t.Fatalf("expected 10 results, got %d", count)
 	}
+
 	acquisTomb.Kill(nil)
 	time.Sleep(1 * time.Second)
 	if acquisTomb.Err() != nil {
@@ -485,7 +476,7 @@ READLOOP:
 	if count != 10 {
 		t.Fatalf("expected 10 results, got %d", count)
 	}
-	//acquisTomb.Kill(nil)
+	// acquisTomb.Kill(nil)
 	time.Sleep(1 * time.Second)
 	if acquisTomb.Err().Error() != "got error (tomb)" {
 		t.Fatalf("didn't got expected error, got '%s'", acquisTomb.Err().Error())
@@ -517,23 +508,28 @@ func (f *MockSourceByDSN) ConfigureByDSN(dsn string, labels map[string]string, l
 
 func TestConfigureByDSN(t *testing.T) {
 	tests := []struct {
+		testName       string
 		dsn            string
 		ExpectedError  string
 		ExpectedResLen int
 	}{
 		{
+			testName:      "baddsn",
 			dsn:           "baddsn",
 			ExpectedError: "baddsn isn't valid dsn (no protocol)",
 		},
 		{
+			testName:      "foobar://toto",
 			dsn:           "foobar://toto",
 			ExpectedError: "no acquisition for protocol foobar://",
 		},
 		{
+			testName:       "mockdsn://test_expect",
 			dsn:            "mockdsn://test_expect",
 			ExpectedResLen: 1,
 		},
 		{
+			testName:      "mockdsn://bad",
 			dsn:           "mockdsn://bad",
 			ExpectedError: "unexpected value",
 		},
@@ -551,11 +547,13 @@ func TestConfigureByDSN(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		srcs, err := LoadAcquisitionFromDSN(test.dsn, map[string]string{"type": "test_label"})
-		cstest.AssertErrorContains(t, err, test.ExpectedError)
+		t.Run(test.testName, func(t *testing.T) {
+			srcs, err := LoadAcquisitionFromDSN(test.dsn, map[string]string{"type": "test_label"})
+			cstest.RequireErrorContains(t, err, test.ExpectedError)
 
-		if len(srcs) != test.ExpectedResLen {
-			t.Fatalf("expected %d results, got %d", test.ExpectedResLen, len(srcs))
-		}
+			if len(srcs) != test.ExpectedResLen {
+				t.Fatalf("expected %d results, got %d", test.ExpectedResLen, len(srcs))
+			}
+		})
 	}
 }
