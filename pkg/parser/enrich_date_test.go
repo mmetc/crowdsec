@@ -1,34 +1,37 @@
-package parser
+package parser_test
 
 import (
 	"testing"
 
+	"github.com/crowdsecurity/crowdsec/pkg/parser"
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDateParse(t *testing.T) {
 	tests := []struct {
-		name             string
-		evt              types.Event
-		expected_err     *error
-		expected_strTime *string
+		name            string
+		evt             types.Event
+		expectedErr     string
+		expectedStrTime *string
 	}{
 		{
 			name: "RFC3339",
 			evt: types.Event{
 				StrTime: "2019-10-12T07:20:50.52Z",
 			},
-			expected_err:     nil,
-			expected_strTime: types.StrPtr("2019-10-12T07:20:50.52Z"),
+			expectedErr:     "",
+			expectedStrTime: types.StrPtr("2019-10-12T07:20:50.52Z"),
 		},
 		{
 			name: "02/Jan/2006:15:04:05 -0700",
 			evt: types.Event{
 				StrTime: "02/Jan/2006:15:04:05 -0700",
 			},
-			expected_err:     nil,
-			expected_strTime: types.StrPtr("2006-01-02T15:04:05-07:00"),
+			expectedErr:     "",
+			expectedStrTime: types.StrPtr("2006-01-02T15:04:05-07:00"),
 		},
 		{
 			name: "Dec 17 08:17:43",
@@ -36,29 +39,25 @@ func TestDateParse(t *testing.T) {
 				StrTime:       "2011 X 17 zz 08X17X43 oneone Dec",
 				StrTimeFormat: "2006 X 2 zz 15X04X05 oneone Jan",
 			},
-			expected_err:     nil,
-			expected_strTime: types.StrPtr("2011-12-17T08:17:43Z"),
+			expectedErr:     "",
+			expectedStrTime: types.StrPtr("2011-12-17T08:17:43Z"),
 		},
 	}
 
 	logger := log.WithFields(log.Fields{
 		"test": "test",
 	})
-	for idx, tt := range tests {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			strTime, err := ParseDate(tt.evt.StrTime, &tt.evt, nil, logger)
-			if tt.expected_err != nil {
-				if err != *tt.expected_err {
-					t.Errorf("%s: expected error %v, got %v", tt.name, tt.expected_err, err)
-				}
-			} else if err != nil {
-				t.Errorf("%s: expected no error, got %v", tt.name, err)
-			}
-			if err != nil {
+			strTime, err := parser.ParseDate(tt.evt.StrTime, &tt.evt, nil, logger)
+			cstest.RequireErrorContains(t, err, tt.expectedErr)
+
+			if tt.expectedErr != "" {
 				return
 			}
-			if tt.expected_strTime != nil && strTime["MarshaledTime"] != *tt.expected_strTime {
-				t.Errorf("%d: expected strTime %s, got %s", idx, *tt.expected_strTime, strTime["MarshaledTime"])
+
+			if tt.expectedStrTime != nil {
+				require.Equal(t, *tt.expectedStrTime, strTime["MarshaledTime"])
 			}
 		})
 	}
