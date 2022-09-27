@@ -10,10 +10,10 @@ import (
 
 func TestLoadPrometheus(t *testing.T) {
 	tests := []struct {
-		name           string
-		Input          *csconfig.Config
-		expectedResult string
-		expectedErr    string
+		name        string
+		Input       *csconfig.Config
+		expected    string
+		expectedErr string
 	}{
 		{
 			name: "basic valid configuration",
@@ -26,7 +26,7 @@ func TestLoadPrometheus(t *testing.T) {
 				},
 				Cscli: &csconfig.CscliCfg{},
 			},
-			expectedResult: "http://127.0.0.1:6060",
+			expected: "http://127.0.0.1:6060",
 		},
 	}
 
@@ -40,7 +40,7 @@ func TestLoadPrometheus(t *testing.T) {
 				return
 			}
 
-			require.Equal(t, tc.expectedResult, tc.Input.Cscli.PrometheusUrl)
+			require.Equal(t, tc.expected, tc.Input.Cscli.PrometheusUrl)
 		})
 	}
 }

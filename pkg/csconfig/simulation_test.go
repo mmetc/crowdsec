@@ -1,4 +1,4 @@
-package csconfig
+package csconfig_test
 
 import (
 	"fmt"
@@ -6,21 +6,17 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 )
 
 func TestSimulationLoading(t *testing.T) {
 	testXXFullPath, err := filepath.Abs("./tests/xxx.yaml")
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	badYamlFullPath, err := filepath.Abs("./tests/config.yaml")
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	noSuchFileMsg := func() string {
 		if runtime.GOOS == "windows" {
@@ -30,63 +26,64 @@ func TestSimulationLoading(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		Input          *Config
-		expectedResult *SimulationConfig
-		expectedErr    string
+		name        string
+		Input       *csconfig.Config
+		expected    *csconfig.SimulationConfig
+		expectedErr string
 	}{
 		{
 			name: "basic valid simulation",
-			Input: &Config{
-				ConfigPaths: &ConfigurationPaths{
+			Input: &csconfig.Config{
+				ConfigPaths: &csconfig.ConfigurationPaths{
 					SimulationFilePath: "./tests/simulation.yaml",
 					DataDir:            "./data",
 				},
-				Crowdsec: &CrowdsecServiceCfg{},
-				Cscli:    &CscliCfg{},
+				Crowdsec: &csconfig.CrowdsecServiceCfg{},
+				Cscli:    &csconfig.CscliCfg{},
 			},
-			expectedResult: &SimulationConfig{Simulation: new(bool)},
+			expected: &csconfig.SimulationConfig{Simulation: new(bool)},
 		},
 		{
 			name: "basic nil config",
-			Input: &Config{
-				ConfigPaths: &ConfigurationPaths{
+			Input: &csconfig.Config{
+				ConfigPaths: &csconfig.ConfigurationPaths{
 					SimulationFilePath: "",
 					DataDir:            "./data",
 				},
-				Crowdsec: &CrowdsecServiceCfg{},
+				Crowdsec: &csconfig.CrowdsecServiceCfg{},
 			},
+			expectedErr: "no such file or directory",
 		},
 		{
 			name: "basic bad file content",
-			Input: &Config{
-				ConfigPaths: &ConfigurationPaths{
+			Input: &csconfig.Config{
+				ConfigPaths: &csconfig.ConfigurationPaths{
 					SimulationFilePath: "./tests/config.yaml",
 					DataDir:            "./data",
 				},
-				Crowdsec: &CrowdsecServiceCfg{},
+				Crowdsec: &csconfig.CrowdsecServiceCfg{},
 			},
 			expectedErr: fmt.Sprintf("while unmarshaling simulation file '%s' : yaml: unmarshal errors", badYamlFullPath),
 		},
 		{
 			name: "basic bad file content",
-			Input: &Config{
-				ConfigPaths: &ConfigurationPaths{
+			Input: &csconfig.Config{
+				ConfigPaths: &csconfig.ConfigurationPaths{
 					SimulationFilePath: "./tests/config.yaml",
 					DataDir:            "./data",
 				},
-				Crowdsec: &CrowdsecServiceCfg{},
+				Crowdsec: &csconfig.CrowdsecServiceCfg{},
 			},
 			expectedErr: fmt.Sprintf("while unmarshaling simulation file '%s' : yaml: unmarshal errors", badYamlFullPath),
 		},
 		{
 			name: "basic bad file name",
-			Input: &Config{
-				ConfigPaths: &ConfigurationPaths{
+			Input: &csconfig.Config{
+				ConfigPaths: &csconfig.ConfigurationPaths{
 					SimulationFilePath: "./tests/xxx.yaml",
 					DataDir:            "./data",
 				},
-				Crowdsec: &CrowdsecServiceCfg{},
+				Crowdsec: &csconfig.CrowdsecServiceCfg{},
 			},
 			expectedErr: fmt.Sprintf("while reading yaml file: open %s: %s", testXXFullPath, noSuchFileMsg()),
 		},
@@ -97,18 +94,23 @@ func TestSimulationLoading(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.Input.LoadSimulation()
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
-			require.Equal(t, tc.expectedResult, tc.Input.Crowdsec.SimulationConfig)
+
+			if tc.expected != nil {
+				return
+			}
+
+			require.Equal(t, tc.expected, tc.Input.Crowdsec.SimulationConfig)
 		})
 	}
 }
 
 func TestIsSimulated(t *testing.T) {
-	simCfgOff := &SimulationConfig{
+	simCfgOff := &csconfig.SimulationConfig{
 		Simulation: new(bool),
 		Exclusions: []string{"test"},
 	}
 
-	simCfgOn := &SimulationConfig{
+	simCfgOn := &csconfig.SimulationConfig{
 		Simulation: new(bool),
 		Exclusions: []string{"test"},
 	}
@@ -116,7 +118,7 @@ func TestIsSimulated(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		SimulationConfig *SimulationConfig
+		SimulationConfig *csconfig.SimulationConfig
 		Input            string
 		expectedResult   bool
 	}{

@@ -1,8 +1,9 @@
-package csconfig
+package csconfig_test
 
 import (
 	"testing"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/stretchr/testify/require"
@@ -10,34 +11,34 @@ import (
 
 func TestLoadDBConfig(t *testing.T) {
 	tests := []struct {
-		name           string
-		Input          *Config
-		expectedResult *DatabaseCfg
-		expectedErr    string
+		name        string
+		Input       *csconfig.Config
+		expected    *csconfig.DatabaseCfg
+		expectedErr string
 	}{
 		{
 			name: "basic valid configuration",
-			Input: &Config{
-				DbConfig: &DatabaseCfg{
+			Input: &csconfig.Config{
+				DbConfig: &csconfig.DatabaseCfg{
 					Type:         "sqlite",
 					DbPath:       "./tests/test.db",
 					MaxOpenConns: types.IntPtr(10),
 				},
-				Cscli: &CscliCfg{},
-				API: &APICfg{
-					Server: &LocalApiServerCfg{},
+				Cscli: &csconfig.CscliCfg{},
+				API: &csconfig.APICfg{
+					Server: &csconfig.LocalApiServerCfg{},
 				},
 			},
-			expectedResult: &DatabaseCfg{
+			expected: &csconfig.DatabaseCfg{
 				Type:         "sqlite",
 				DbPath:       "./tests/test.db",
 				MaxOpenConns: types.IntPtr(10),
 			},
 		},
 		{
-			name:           "no configuration path",
-			Input:          &Config{},
-			expectedResult: nil,
+			name:        "no configuration path",
+			Input:       &csconfig.Config{},
+			expectedErr: "no database configuration provided",
 		},
 	}
 
@@ -47,11 +48,11 @@ func TestLoadDBConfig(t *testing.T) {
 			err := tc.Input.LoadDBConfig()
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
-			if tc.expectedResult != nil {
+			if tc.expected != nil {
 				return
 			}
 
-			require.Equal(t, tc.expectedResult, tc.Input.DbConfig)
+			require.Equal(t, tc.expected, tc.Input.DbConfig)
 		})
 	}
 }

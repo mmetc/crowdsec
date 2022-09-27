@@ -18,10 +18,10 @@ func TestLoadCommon(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name           string
-		Input          *csconfig.Config
-		expectedResult *csconfig.CommonCfg
-		err            string
+		name        string
+		Input       *csconfig.Config
+		expected    *csconfig.CommonCfg
+		expectedErr string
 	}{
 		{
 			name: "basic valid configuration",
@@ -34,7 +34,7 @@ func TestLoadCommon(t *testing.T) {
 					WorkingDir: "./tests/",
 				},
 			},
-			expectedResult: &csconfig.CommonCfg{
+			expected: &csconfig.CommonCfg{
 				Daemonize:  true,
 				PidDir:     pidDirPath,
 				LogMedia:   "file",
@@ -52,7 +52,7 @@ func TestLoadCommon(t *testing.T) {
 					LogDir:    "./tests/log/",
 				},
 			},
-			expectedResult: &csconfig.CommonCfg{
+			expected: &csconfig.CommonCfg{
 				Daemonize: true,
 				PidDir:    pidDirPath,
 				LogMedia:  "file",
@@ -62,7 +62,7 @@ func TestLoadCommon(t *testing.T) {
 		{
 			name:           "no common",
 			Input:          &csconfig.Config{},
-			expectedResult: nil,
+			expectedErr:    "no common block provided in configuration file",
 		},
 	}
 
@@ -70,8 +70,13 @@ func TestLoadCommon(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.Input.LoadCommon()
-			cstest.RequireErrorContains(t, err, tc.err)
-			require.Equal(t, tc.expectedResult, tc.Input.Common)
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
+
+			if tc.expectedErr != "" {
+				return
+			}
+
+			require.Equal(t, tc.expected, tc.Input.Common)
 		})
 	}
 }

@@ -1,9 +1,10 @@
-package csconfig
+package csconfig_test
 
 import (
 	"path/filepath"
 	"testing"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/stretchr/testify/require"
@@ -33,30 +34,30 @@ func TestLoadCrowdsec(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name           string
-		Input          *Config
-		expectedResult *CrowdsecServiceCfg
-		expectedErr    string
+		name        string
+		Input       *csconfig.Config
+		expected    *csconfig.CrowdsecServiceCfg
+		expectedErr string
 	}{
 		{
 			name: "basic valid configuration",
-			Input: &Config{
-				ConfigPaths: &ConfigurationPaths{
+			Input: &csconfig.Config{
+				ConfigPaths: &csconfig.ConfigurationPaths{
 					ConfigDir: "./tests",
 					DataDir:   "./data",
 					HubDir:    "./hub",
 				},
-				API: &APICfg{
-					Client: &LocalApiClientCfg{
+				API: &csconfig.APICfg{
+					Client: &csconfig.LocalApiClientCfg{
 						CredentialsFilePath: "./tests/lapi-secrets.yaml",
 					},
 				},
-				Crowdsec: &CrowdsecServiceCfg{
+				Crowdsec: &csconfig.CrowdsecServiceCfg{
 					AcquisitionFilePath: "./tests/acquis.yaml",
 					SimulationFilePath:  "./tests/simulation.yaml",
 				},
 			},
-			expectedResult: &CrowdsecServiceCfg{
+			expected: &csconfig.CrowdsecServiceCfg{
 				Enable:               types.BoolPtr(true),
 				AcquisitionDirPath:   "",
 				AcquisitionFilePath:  acquisFullPath,
@@ -69,31 +70,31 @@ func TestLoadCrowdsec(t *testing.T) {
 				OutputRoutinesCount:  1,
 				AcquisitionFiles:     []string{acquisFullPath},
 				SimulationFilePath:   "./tests/simulation.yaml",
-				SimulationConfig: &SimulationConfig{
+				SimulationConfig: &csconfig.SimulationConfig{
 					Simulation: &falseBoolPtr,
 				},
 			},
 		},
 		{
 			name: "basic valid configuration with acquisition dir",
-			Input: &Config{
-				ConfigPaths: &ConfigurationPaths{
+			Input: &csconfig.Config{
+				ConfigPaths: &csconfig.ConfigurationPaths{
 					ConfigDir: "./tests",
 					DataDir:   "./data",
 					HubDir:    "./hub",
 				},
-				API: &APICfg{
-					Client: &LocalApiClientCfg{
+				API: &csconfig.APICfg{
+					Client: &csconfig.LocalApiClientCfg{
 						CredentialsFilePath: "./tests/lapi-secrets.yaml",
 					},
 				},
-				Crowdsec: &CrowdsecServiceCfg{
+				Crowdsec: &csconfig.CrowdsecServiceCfg{
 					AcquisitionFilePath: "./tests/acquis.yaml",
 					AcquisitionDirPath:  "./tests/acquis/",
 					SimulationFilePath:  "./tests/simulation.yaml",
 				},
 			},
-			expectedResult: &CrowdsecServiceCfg{
+			expected: &csconfig.CrowdsecServiceCfg{
 				Enable:               types.BoolPtr(true),
 				AcquisitionDirPath:   acquisDirFullPath,
 				AcquisitionFilePath:  acquisFullPath,
@@ -106,27 +107,27 @@ func TestLoadCrowdsec(t *testing.T) {
 				OutputRoutinesCount:  1,
 				AcquisitionFiles:     []string{acquisFullPath, acquisInDirFullPath},
 				SimulationFilePath:   "./tests/simulation.yaml",
-				SimulationConfig: &SimulationConfig{
+				SimulationConfig: &csconfig.SimulationConfig{
 					Simulation: &falseBoolPtr,
 				},
 			},
 		},
 		{
 			name: "no acquisition file and dir",
-			Input: &Config{
-				ConfigPaths: &ConfigurationPaths{
+			Input: &csconfig.Config{
+				ConfigPaths: &csconfig.ConfigurationPaths{
 					ConfigDir: "./tests",
 					DataDir:   "./data",
 					HubDir:    "./hub",
 				},
-				API: &APICfg{
-					Client: &LocalApiClientCfg{
+				API: &csconfig.APICfg{
+					Client: &csconfig.LocalApiClientCfg{
 						CredentialsFilePath: "./tests/lapi-secrets.yaml",
 					},
 				},
-				Crowdsec: &CrowdsecServiceCfg{},
+				Crowdsec: &csconfig.CrowdsecServiceCfg{},
 			},
-			expectedResult: &CrowdsecServiceCfg{
+			expected: &csconfig.CrowdsecServiceCfg{
 				Enable:               types.BoolPtr(true),
 				BucketsRoutinesCount: 1,
 				ParserRoutinesCount:  1,
@@ -135,46 +136,40 @@ func TestLoadCrowdsec(t *testing.T) {
 				HubIndexFile:         hubIndexFileFullPath,
 				DataDir:              dataFullPath,
 				HubDir:               hubFullPath,
-				SimulationConfig: &SimulationConfig{
+				SimulationConfig: &csconfig.SimulationConfig{
 					Simulation: &falseBoolPtr,
 				},
 			},
 		},
 		{
 			name: "non existing acquisition file",
-			Input: &Config{
-				ConfigPaths: &ConfigurationPaths{
+			Input: &csconfig.Config{
+				ConfigPaths: &csconfig.ConfigurationPaths{
 					ConfigDir: "./tests",
 					DataDir:   "./data",
 					HubDir:    "./hub",
 				},
-				API: &APICfg{
-					Client: &LocalApiClientCfg{
+				API: &csconfig.APICfg{
+					Client: &csconfig.LocalApiClientCfg{
 						CredentialsFilePath: "./tests/lapi-secrets.yaml",
 					},
 				},
-				Crowdsec: &CrowdsecServiceCfg{
+				Crowdsec: &csconfig.CrowdsecServiceCfg{
 					AcquisitionFilePath: "./tests/acquis_not_exist.yaml",
 				},
 			},
-			expectedResult: &CrowdsecServiceCfg{
-				Enable:               types.BoolPtr(true),
-				AcquisitionFilePath:  "./tests/acquis_not_exist.yaml",
-				BucketsRoutinesCount: 0,
-				ParserRoutinesCount:  0,
-				OutputRoutinesCount:  0,
-			},
+			expectedErr: "stat ./tests/acquis_not_exist.yaml: no such file or directory",
 		},
 		{
 			name: "agent disabled",
-			Input: &Config{
-				ConfigPaths: &ConfigurationPaths{
+			Input: &csconfig.Config{
+				ConfigPaths: &csconfig.ConfigurationPaths{
 					ConfigDir: "./tests",
 					DataDir:   "./data",
 					HubDir:    "./hub",
 				},
 			},
-			expectedResult: nil,
+			expected: nil,
 		},
 	}
 
@@ -184,8 +179,11 @@ func TestLoadCrowdsec(t *testing.T) {
 			err := tc.Input.LoadCrowdsec()
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
-			require.Equal(t, tc.expectedResult, tc.Input.Crowdsec)
-		})
+			if tc.expectedErr != "" {
+				return
+			}
 
+			require.Equal(t, tc.expected, tc.Input.Crowdsec)
+		})
 	}
 }

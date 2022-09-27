@@ -1,10 +1,11 @@
-package csconfig
+package csconfig_test
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/stretchr/testify/require"
@@ -15,16 +16,16 @@ func TestLoadLocalApiClientCfg(t *testing.T) {
 	True := true
 	tests := []struct {
 		name           string
-		Input          *LocalApiClientCfg
-		expectedResult *ApiCredentialsCfg
+		Input          *csconfig.LocalApiClientCfg
+		expectedResult *csconfig.ApiCredentialsCfg
 		expectedErr    string
 	}{
 		{
 			name: "basic valid configuration",
-			Input: &LocalApiClientCfg{
+			Input: &csconfig.LocalApiClientCfg{
 				CredentialsFilePath: "./tests/lapi-secrets.yaml",
 			},
-			expectedResult: &ApiCredentialsCfg{
+			expectedResult: &csconfig.ApiCredentialsCfg{
 				URL:      "http://localhost:8080/",
 				Login:    "test",
 				Password: "testpassword",
@@ -32,25 +33,25 @@ func TestLoadLocalApiClientCfg(t *testing.T) {
 		},
 		{
 			name: "invalid configuration",
-			Input: &LocalApiClientCfg{
+			Input: &csconfig.LocalApiClientCfg{
 				CredentialsFilePath: "./tests/bad_lapi-secrets.yaml",
 			},
-			expectedResult: &ApiCredentialsCfg{},
+			expectedErr: "field unknown_key not found in type csconfig.ApiCredentialsCfg",
 		},
 		{
 			name: "invalid configuration filepath",
-			Input: &LocalApiClientCfg{
+			Input: &csconfig.LocalApiClientCfg{
 				CredentialsFilePath: "./tests/nonexist_lapi-secrets.yaml",
 			},
-			expectedResult: nil,
+			expectedErr: "no such file or directory",
 		},
 		{
 			name: "valid configuration with insecure skip verify",
-			Input: &LocalApiClientCfg{
+			Input: &csconfig.LocalApiClientCfg{
 				CredentialsFilePath: "./tests/lapi-secrets.yaml",
 				InsecureSkipVerify:  &True,
 			},
-			expectedResult: &ApiCredentialsCfg{
+			expectedResult: &csconfig.ApiCredentialsCfg{
 				URL:      "http://localhost:8080/",
 				Login:    "test",
 				Password: "testpassword",
@@ -77,16 +78,16 @@ func TestLoadLocalApiClientCfg(t *testing.T) {
 func TestLoadOnlineApiClientCfg(t *testing.T) {
 	tests := []struct {
 		name           string
-		Input          *OnlineApiClientCfg
-		expectedResult *ApiCredentialsCfg
+		Input          *csconfig.OnlineApiClientCfg
+		expectedResult *csconfig.ApiCredentialsCfg
 		expectedErr    string
 	}{
 		{
 			name: "basic valid configuration",
-			Input: &OnlineApiClientCfg{
+			Input: &csconfig.OnlineApiClientCfg{
 				CredentialsFilePath: "./tests/online-api-secrets.yaml",
 			},
-			expectedResult: &ApiCredentialsCfg{
+			expectedResult: &csconfig.ApiCredentialsCfg{
 				URL:      "http://crowdsec.api",
 				Login:    "test",
 				Password: "testpassword",
@@ -94,25 +95,25 @@ func TestLoadOnlineApiClientCfg(t *testing.T) {
 		},
 		{
 			name: "invalid configuration",
-			Input: &OnlineApiClientCfg{
+			Input: &csconfig.OnlineApiClientCfg{
 				CredentialsFilePath: "./tests/bad_lapi-secrets.yaml",
 			},
-			expectedResult: &ApiCredentialsCfg{},
+			expectedResult: &csconfig.ApiCredentialsCfg{},
 			expectedErr: "failed unmarshaling api server credentials",
 		},
 		{
 			name: "missing field configuration",
-			Input: &OnlineApiClientCfg{
+			Input: &csconfig.OnlineApiClientCfg{
 				CredentialsFilePath: "./tests/bad_online-api-secrets.yaml",
 			},
 			expectedResult: nil,
 		},
 		{
 			name: "invalid configuration filepath",
-			Input: &OnlineApiClientCfg{
+			Input: &csconfig.OnlineApiClientCfg{
 				CredentialsFilePath: "./tests/nonexist_online-api-secrets.yaml",
 			},
-			expectedResult: &ApiCredentialsCfg{},
+			expectedResult: &csconfig.ApiCredentialsCfg{},
 			expectedErr: "failed to read api server credentials",
 		},
 	}
@@ -133,7 +134,7 @@ func TestLoadOnlineApiClientCfg(t *testing.T) {
 }
 
 func TestLoadAPIServer(t *testing.T) {
-	tmpLAPI := &LocalApiServerCfg{
+	tmpLAPI := &csconfig.LocalApiServerCfg{
 		ProfilesPath: "./tests/profiles.yaml",
 	}
 	if err := tmpLAPI.LoadProfiles(); err != nil {
@@ -143,7 +144,7 @@ func TestLoadAPIServer(t *testing.T) {
 	LogDirFullPath, err := filepath.Abs("./tests")
 	require.NoError(t, err)
 
-	config := &Config{}
+	config := &csconfig.Config{}
 	fcontent, err := os.ReadFile("./tests/config.yaml")
 	require.NoError(t, err)
 
@@ -153,53 +154,53 @@ func TestLoadAPIServer(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		Input          *Config
-		expectedResult *LocalApiServerCfg
+		Input          *csconfig.Config
+		expectedResult *csconfig.LocalApiServerCfg
 		expectedErr    string
 	}{
 		{
 			name: "basic valid configuration",
-			Input: &Config{
+			Input: &csconfig.Config{
 				Self: []byte(configData),
-				API: &APICfg{
-					Server: &LocalApiServerCfg{
+				API: &csconfig.APICfg{
+					Server: &csconfig.LocalApiServerCfg{
 						ListenURI: "http://crowdsec.api",
-						OnlineClient: &OnlineApiClientCfg{
+						OnlineClient: &csconfig.OnlineApiClientCfg{
 							CredentialsFilePath: "./tests/online-api-secrets.yaml",
 						},
 						ProfilesPath: "./tests/profiles.yaml",
 					},
 				},
-				DbConfig: &DatabaseCfg{
+				DbConfig: &csconfig.DatabaseCfg{
 					Type:   "sqlite",
 					DbPath: "./tests/test.db",
 				},
-				Common: &CommonCfg{
+				Common: &csconfig.CommonCfg{
 					LogDir:   "./tests/",
 					LogMedia: "stdout",
 				},
 				DisableAPI: false,
 			},
-			expectedResult: &LocalApiServerCfg{
+			expectedResult: &csconfig.LocalApiServerCfg{
 				Enable:    types.BoolPtr(true),
 				ListenURI: "http://crowdsec.api",
 				TLS:       nil,
-				DbConfig: &DatabaseCfg{
+				DbConfig: &csconfig.DatabaseCfg{
 					DbPath:       "./tests/test.db",
 					Type:         "sqlite",
-					MaxOpenConns: types.IntPtr(DEFAULT_MAX_OPEN_CONNS),
+					MaxOpenConns: types.IntPtr(csconfig.DEFAULT_MAX_OPEN_CONNS),
 				},
-				ConsoleConfigPath: DefaultConfigPath("console.yaml"),
-				ConsoleConfig: &ConsoleConfig{
+				ConsoleConfigPath: csconfig.DefaultConfigPath("console.yaml"),
+				ConsoleConfig: &csconfig.ConsoleConfig{
 					ShareManualDecisions:  types.BoolPtr(false),
 					ShareTaintedScenarios: types.BoolPtr(true),
 					ShareCustomScenarios:  types.BoolPtr(true),
 				},
 				LogDir:   LogDirFullPath,
 				LogMedia: "stdout",
-				OnlineClient: &OnlineApiClientCfg{
+				OnlineClient: &csconfig.OnlineApiClientCfg{
 					CredentialsFilePath: "./tests/online-api-secrets.yaml",
-					Credentials: &ApiCredentialsCfg{
+					Credentials: &csconfig.ApiCredentialsCfg{
 						URL:      "http://crowdsec.api",
 						Login:    "test",
 						Password: "testpassword",
@@ -213,18 +214,18 @@ func TestLoadAPIServer(t *testing.T) {
 		},
 		{
 			name: "basic invalid configuration",
-			Input: &Config{
+			Input: &csconfig.Config{
 				Self: []byte(configData),
-				API: &APICfg{
-					Server: &LocalApiServerCfg{},
+				API: &csconfig.APICfg{
+					Server: &csconfig.LocalApiServerCfg{},
 				},
-				Common: &CommonCfg{
+				Common: &csconfig.CommonCfg{
 					LogDir:   "./tests/",
 					LogMedia: "stdout",
 				},
 				DisableAPI: false,
 			},
-			expectedResult: &LocalApiServerCfg{
+			expectedResult: &csconfig.LocalApiServerCfg{
 				Enable:   types.BoolPtr(true),
 				LogDir:   LogDirFullPath,
 				LogMedia: "stdout",

@@ -1,51 +1,44 @@
-package csconfig
+package csconfig_test
 
 import (
 	"path/filepath"
 	"testing"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/stretchr/testify/require"
 )
 
 func TestLoadCSCLI(t *testing.T) {
 	hubFullPath, err := filepath.Abs("./hub")
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	require.NoError(t, err)
 
 	dataFullPath, err := filepath.Abs("./data")
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	require.NoError(t, err)
 
 	configDirFullPath, err := filepath.Abs("./tests")
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	require.NoError(t, err)
 
 	hubIndexFileFullPath, err := filepath.Abs("./hub/.index.json")
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	require.NoError(t, err)
 
 	tests := []struct {
-		name           string
-		Input          *Config
-		expectedResult *CscliCfg
-		expectedErr    string
+		name        string
+		Input       *csconfig.Config
+		expected    *csconfig.CscliCfg
+		expectedErr string
 	}{
 		{
 			name: "basic valid configuration",
-			Input: &Config{
-				ConfigPaths: &ConfigurationPaths{
+			Input: &csconfig.Config{
+				ConfigPaths: &csconfig.ConfigurationPaths{
 					ConfigDir:    "./tests",
 					DataDir:      "./data",
 					HubDir:       "./hub",
 					HubIndexFile: "./hub/.index.json",
 				},
 			},
-			expectedResult: &CscliCfg{
+			expected: &csconfig.CscliCfg{
 				ConfigDir:    configDirFullPath,
 				DataDir:      dataFullPath,
 				HubDir:       hubFullPath,
@@ -53,9 +46,9 @@ func TestLoadCSCLI(t *testing.T) {
 			},
 		},
 		{
-			name:           "no configuration path",
-			Input:          &Config{},
-			expectedResult: &CscliCfg{},
+			name:        "no configuration path",
+			Input:       &csconfig.Config{},
+			expectedErr: "no configuration paths provided",
 		},
 	}
 
@@ -65,11 +58,11 @@ func TestLoadCSCLI(t *testing.T) {
 			err := tc.Input.LoadCSCLI()
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
-			if tc.expectedErr == "" {
+			if tc.expectedErr != "" {
 				return
 			}
 
-			require.Equal(t, tc.expectedResult, tc.Input.Cscli)
+			require.Equal(t, tc.expected, tc.Input.Cscli)
 		})
 	}
 }

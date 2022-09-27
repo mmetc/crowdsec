@@ -1,9 +1,10 @@
-package csconfig
+package csconfig_test
 
 import (
 	"path/filepath"
 	"testing"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/stretchr/testify/require"
 )
@@ -22,22 +23,22 @@ func TestLoadHub(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name           string
-		Input          *Config
-		expectedResult *Hub
-		expectedErr    string
+		name        string
+		Input       *csconfig.Config
+		expected    *csconfig.Hub
+		expectedErr string
 	}{
 		{
 			name: "basic valid configuration",
-			Input: &Config{
-				ConfigPaths: &ConfigurationPaths{
+			Input: &csconfig.Config{
+				ConfigPaths: &csconfig.ConfigurationPaths{
 					ConfigDir:    "./tests",
 					DataDir:      "./data",
 					HubDir:       "./hub",
 					HubIndexFile: "./hub/.index.json",
 				},
 			},
-			expectedResult: &Hub{
+			expected: &csconfig.Hub{
 				ConfigDir:    configDirFullPath,
 				DataDir:      dataFullPath,
 				HubDir:       hubFullPath,
@@ -46,19 +47,19 @@ func TestLoadHub(t *testing.T) {
 		},
 		{
 			name: "no data dir",
-			Input: &Config{
-				ConfigPaths: &ConfigurationPaths{
+			Input: &csconfig.Config{
+				ConfigPaths: &csconfig.ConfigurationPaths{
 					ConfigDir:    "./tests",
 					HubDir:       "./hub",
 					HubIndexFile: "./hub/.index.json",
 				},
 			},
-			expectedResult: nil,
+			expectedErr:    "please provide a data directory with the 'data_dir' directive in the 'config_paths' section",
 		},
 		{
 			name:           "no configuration path",
-			Input:          &Config{},
-			expectedResult: nil,
+			Input:          &csconfig.Config{},
+			expectedErr:    "no configuration paths provided",
 		},
 	}
 
@@ -68,11 +69,11 @@ func TestLoadHub(t *testing.T) {
 			err := tc.Input.LoadHub()
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
-			if tc.expectedResult == nil {
+			if tc.expected == nil {
 				return
 			}
 
-			require.Equal(t, tc.expectedResult, tc.Input.Hub)
+			require.Equal(t, tc.expected, tc.Input.Hub)
 		})
 	}
 }
