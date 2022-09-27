@@ -15,6 +15,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
@@ -24,6 +25,7 @@ import (
 	"github.com/jarcoal/httpmock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 )
 
@@ -132,7 +134,7 @@ func TestAPICCAPIPullIsOld(t *testing.T) {
 
 func TestAPICFetchScenariosListFromDB(t *testing.T) {
 	api := getAPIC(t)
-	testCases := []struct {
+	tests := []struct {
 		name                    string
 		machineIDsWithScenarios map[string]string
 		expectedScenarios       []string
@@ -154,7 +156,8 @@ func TestAPICFetchScenariosListFromDB(t *testing.T) {
 		},
 	}
 
-	for _, tc := range testCases {
+	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			for machineID, scenarios := range tc.machineIDsWithScenarios {
 				api.dbClient.Ent.Machine.Create().
@@ -164,17 +167,16 @@ func TestAPICFetchScenariosListFromDB(t *testing.T) {
 					SetScenarios(scenarios).
 					ExecX(context.Background())
 			}
+
 			scenarios, err := api.FetchScenariosListFromDB()
 			for machineID := range tc.machineIDsWithScenarios {
 				api.dbClient.Ent.Machine.Delete().Where(machine.MachineIdEQ(machineID)).ExecX(context.Background())
 			}
-			if err != nil {
-				t.Fatal(err)
-			} else {
-				sort.Strings(scenarios)
-				sort.Strings(tc.expectedScenarios)
-				assert.Equal(t, scenarios, tc.expectedScenarios)
-			}
+			require.NoError(t, err)
+
+			sort.Strings(scenarios)
+			sort.Strings(tc.expectedScenarios)
+			assert.Equal(t, scenarios, tc.expectedScenarios)
 		})
 
 	}
@@ -221,16 +223,13 @@ func TestNewAPIC(t *testing.T) {
 			errorContains: "first path segment in URL cannot contain colon",
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
 			setConfig()
-			tt.action()
-			_, err := NewAPIC(testConfig, tt.args.dbClient, tt.args.consoleConfig)
-			if tt.wantErr {
-				assert.ErrorContains(t, err, tt.errorContains)
-			} else {
-				assert.NoError(t, err)
-			}
+			tc.action()
+			_, err := NewAPIC(testConfig, tc.args.dbClient, tc.args.consoleConfig)
+			cstest.RequireErrorContains(t, err, tc.errorContains)
 		})
 	}
 }
@@ -278,7 +277,7 @@ func TestAPICGetMetrics(t *testing.T) {
 		api.dbClient.Ent.Bouncer.Delete().ExecX(context.Background())
 		api.dbClient.Ent.Machine.Delete().ExecX(context.Background())
 	}
-	testCases := []struct {
+	tests := []struct {
 		name           string
 		machineIDs     []string
 		bouncers       []string
@@ -322,10 +321,11 @@ func TestAPICGetMetrics(t *testing.T) {
 			},
 		},
 	}
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
 			cleanUp()
-			for i, machineID := range testCase.machineIDs {
+			for i, machineID := range tc.machineIDs {
 				api.dbClient.Ent.Machine.Create().
 					SetMachineId(machineID).
 					SetPassword(testPassword.String()).
@@ -336,7 +336,7 @@ func TestAPICGetMetrics(t *testing.T) {
 					ExecX(context.Background())
 			}
 
-			for i, bouncerName := range testCase.bouncers {
+			for i, bouncerName := range tc.bouncers {
 				api.dbClient.Ent.Bouncer.Create().
 					SetIPAddress(fmt.Sprintf("1.2.3.%d", i)).
 					SetName(bouncerName).
@@ -346,13 +346,12 @@ func TestAPICGetMetrics(t *testing.T) {
 					ExecX(context.Background())
 			}
 
-			if foundMetrics, err := api.GetMetrics(); err != nil {
-				t.Fatal(err)
-			} else {
-				assert.Equal(t, foundMetrics.Bouncers, testCase.expectedMetric.Bouncers)
-				assert.Equal(t, foundMetrics.Machines, testCase.expectedMetric.Machines)
+			foundMetrics, err := api.GetMetrics()
+			require.NoError(t, err)
 
-			}
+			assert.Equal(t, foundMetrics.Bouncers, tc.expectedMetric.Bouncers)
+			assert.Equal(t, foundMetrics.Machines, tc.expectedMetric.Machines)
+
 		})
 	}
 }
@@ -427,10 +426,11 @@ func TestCreateAlertsForDecision(t *testing.T) {
 			},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := createAlertsForDecisions(tt.args.decisions); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("createAlertsForDecisions() = %v, want %v", got, tt.want)
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			if got := createAlertsForDecisions(tc.args.decisions); !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("createAlertsForDecisions() = %v, want %v", got, tc.want)
 			}
 		})
 	}
@@ -503,11 +503,12 @@ func TestFillAlertsWithDecisions(t *testing.T) {
 			},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
 			add_counters, _ := makeAddAndDeleteCounters()
-			if got := fillAlertsWithDecisions(tt.args.alerts, tt.args.decisions, add_counters); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("fillAlertsWithDecisions() = %v, want %v", got, tt.want)
+			if got := fillAlertsWithDecisions(tc.args.alerts, tc.args.decisions, add_counters); !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("fillAlertsWithDecisions() = %v, want %v", got, tc.want)
 			}
 		})
 	}
@@ -636,7 +637,7 @@ func TestAPICPullTop(t *testing.T) {
 
 func TestAPICPush(t *testing.T) {
 
-	testCases := []struct {
+	tests := []struct {
 		name          string
 		alerts        []*models.Alert
 		expectedCalls int
@@ -683,8 +684,9 @@ func TestAPICPush(t *testing.T) {
 		},
 	}
 
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
 			api := getAPIC(t)
 			api.pushInterval = time.Millisecond
 			url, err := url.ParseRequestURI("http://api.crowdsec.net/")
@@ -705,21 +707,21 @@ func TestAPICPush(t *testing.T) {
 			api.apiClient = apic
 			httpmock.RegisterResponder("POST", "http://api.crowdsec.net/api/signals", httpmock.NewBytesResponder(200, []byte{}))
 			go func() {
-				api.alertToPush <- testCase.alerts
+				api.alertToPush <- tc.alerts
 				time.Sleep(time.Second)
 				api.Shutdown()
 			}()
 			if err := api.Push(); err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, httpmock.GetTotalCallCount(), testCase.expectedCalls)
+			assert.Equal(t, httpmock.GetTotalCallCount(), tc.expectedCalls)
 		})
 	}
 }
 
 func TestAPICSendMetrics(t *testing.T) {
 	api := getAPIC(t)
-	testCases := []struct {
+	tests := []struct {
 		name            string
 		duration        time.Duration
 		expectedCalls   int
@@ -758,8 +760,10 @@ func TestAPICSendMetrics(t *testing.T) {
 			},
 		},
 	}
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
 			api = getAPIC(t)
 			api.pushInterval = time.Millisecond
 			url, err := url.ParseRequestURI("http://api.crowdsec.net/")
@@ -778,24 +782,24 @@ func TestAPICSendMetrics(t *testing.T) {
 				t.Fatal(err)
 			}
 			api.apiClient = apic
-			api.metricsInterval = testCase.metricsInterval
+			api.metricsInterval = tc.metricsInterval
 			httpmock.RegisterNoResponder(httpmock.NewBytesResponder(200, []byte{}))
-			testCase.setUp()
+			tc.setUp()
 
 			go func() {
 				if err := api.SendMetrics(); err != nil {
 					panic(err)
 				}
 			}()
-			time.Sleep(testCase.duration)
-			assert.LessOrEqual(t, absDiff(testCase.expectedCalls, httpmock.GetTotalCallCount()), 2)
+			time.Sleep(tc.duration)
+			assert.LessOrEqual(t, absDiff(tc.expectedCalls, httpmock.GetTotalCallCount()), 2)
 		})
 	}
 }
 
 func TestAPICPull(t *testing.T) {
 	api := getAPIC(t)
-	testCases := []struct {
+	tests := []struct {
 		name                  string
 		setUp                 func()
 		expectedDecisionCount int
@@ -820,14 +824,13 @@ func TestAPICPull(t *testing.T) {
 		},
 	}
 
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
 			api = getAPIC(t)
 			api.pullInterval = time.Millisecond
 			url, err := url.ParseRequestURI("http://api.crowdsec.net/")
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			httpmock.Activate()
 			defer httpmock.DeactivateAndReset()
 			apic, err := apiclient.NewDefaultClient(
@@ -836,9 +839,7 @@ func TestAPICPull(t *testing.T) {
 				fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 				nil,
 			)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			api.apiClient = apic
 			httpmock.RegisterNoResponder(httpmock.NewBytesResponder(200, jsonMarshalX(
 				models.DecisionsStreamResponse{
@@ -854,7 +855,7 @@ func TestAPICPull(t *testing.T) {
 					},
 				},
 			)))
-			testCase.setUp()
+			tc.setUp()
 			var buf bytes.Buffer
 			go func() {
 				logrus.SetOutput(&buf)
@@ -865,15 +866,14 @@ func TestAPICPull(t *testing.T) {
 			//Slightly long because the CI runner for windows are slow, and this can lead to random failure
 			time.Sleep(time.Millisecond * 500)
 			logrus.SetOutput(os.Stderr)
-			assert.Contains(t, buf.String(), testCase.logContains)
-			assertTotalDecisionCount(t, api.dbClient, testCase.expectedDecisionCount)
+			assert.Contains(t, buf.String(), tc.logContains)
+			assertTotalDecisionCount(t, api.dbClient, tc.expectedDecisionCount)
 		})
 	}
 }
 
 func TestShouldShareAlert(t *testing.T) {
-
-	testCases := []struct {
+	tests := []struct {
 		name          string
 		consoleConfig *csconfig.ConsoleConfig
 		alert         *models.Alert
@@ -948,10 +948,11 @@ func TestShouldShareAlert(t *testing.T) {
 		},
 	}
 
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
-			ret := shouldShareAlert(testCase.alert, testCase.consoleConfig)
-			assert.Equal(t, ret, testCase.expectedRet)
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			ret := shouldShareAlert(tc.alert, tc.consoleConfig)
+			assert.Equal(t, ret, tc.expectedRet)
 		})
 	}
 }

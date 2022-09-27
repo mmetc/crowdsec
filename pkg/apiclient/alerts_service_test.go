@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	log "github.com/sirupsen/logrus"
@@ -43,7 +44,6 @@ func TestAlertsListAsMachine(t *testing.T) {
 	defer teardown()
 
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
-
 		if r.URL.RawQuery == "ip=1.2.3.4" {
 			testMethod(t, r, "GET")
 			w.WriteHeader(http.StatusOK)
@@ -124,7 +124,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 			Capacity:  &tcapacity,
 			CreatedAt: "2020-11-28T10:20:47+01:00",
 			Decisions: []*models.Decision{
-				&models.Decision{
+				{
 					Duration: &tduration,
 					ID:       1,
 					Origin:   &torigin,
@@ -137,7 +137,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 				},
 			},
 			Events: []*models.Event{
-				&models.Event{
+				{
 					Meta: models.Meta{
 						&models.MetaItems0{
 							Key:   "target_user",
@@ -149,8 +149,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 						},
 					},
 					Timestamp: &ttimestamp,
-				},
-				&models.Event{
+				}, {
 					Meta: models.Meta{
 						&models.MetaItems0{
 							Key:   "target_user",
@@ -323,7 +322,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 		Capacity:  &tcapacity,
 		CreatedAt: "2020-11-28T10:20:47+01:00",
 		Decisions: []*models.Decision{
-			&models.Decision{
+			{
 				Duration: &tduration,
 				ID:       1,
 				Origin:   &torigin,
@@ -336,7 +335,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 			},
 		},
 		Events: []*models.Event{
-			&models.Event{
+			{
 				Meta: models.Meta{
 					&models.MetaItems0{
 						Key:   "target_user",
@@ -348,8 +347,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 					},
 				},
 				Timestamp: &ttimestamp,
-			},
-			&models.Event{
+			}, {
 				Meta: models.Meta{
 					&models.MetaItems0{
 						Key:   "target_user",
@@ -398,10 +396,9 @@ func TestAlertsGetAsMachine(t *testing.T) {
 		t.Errorf("client.Alerts.List returned %+v, want %+v", resp, expected)
 	}
 
-	//fail
-	_, resp, err = client.Alerts.GetByID(context.Background(), 2)
-	assert.Contains(t, fmt.Sprintf("%s", err), "API error: object not found")
-
+	// fail
+	_, _, err = client.Alerts.GetByID(context.Background(), 2)
+	cstest.AssertErrorContains(t, err, "API error: object not found")
 }
 
 func TestAlertsCreateAsMachine(t *testing.T) {

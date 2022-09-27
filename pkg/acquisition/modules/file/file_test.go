@@ -49,11 +49,12 @@ exclude_regexps: ["as[a-$d"]`,
 		"type": "file",
 	})
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
 			f := FileSource{}
-			err := f.Configure([]byte(test.config), subLogger)
-			cstest.RequireErrorContains(t, err, test.expectedErr)
+			err := f.Configure([]byte(tc.config), subLogger)
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
 }
@@ -91,11 +92,12 @@ func TestConfigureDSN(t *testing.T) {
 		"type": "file",
 	})
 
-	for _, test := range tests {
-		t.Run(test.dsn, func(t *testing.T) {
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.dsn, func(t *testing.T) {
 			f := FileSource{}
-			err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger)
-			cstest.RequireErrorContains(t, err, test.expectedErr)
+			err := f.ConfigureByDSN(tc.dsn, map[string]string{"type": "testtype"}, subLogger)
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
 }
@@ -216,10 +218,11 @@ filename: test_files/test_delete.log`,
 		},
 	}
 
-	for _, ts := range tests {
-		t.Run(ts.name, func(t *testing.T) {
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
 			logger, hook := test.NewNullLogger()
-			logger.SetLevel(ts.logLevel)
+			logger.SetLevel(tc.logLevel)
 
 			subLogger := logger.WithFields(log.Fields{
 				"type": "file",
@@ -229,22 +232,22 @@ filename: test_files/test_delete.log`,
 			out := make(chan types.Event)
 			f := FileSource{}
 
-			if ts.setup != nil {
-				ts.setup()
+			if tc.setup != nil {
+				tc.setup()
 			}
 
-			err := f.Configure([]byte(ts.config), subLogger)
-			cstest.AssertErrorContains(t, err, ts.expectedConfigErr)
+			err := f.Configure([]byte(tc.config), subLogger)
+			cstest.AssertErrorContains(t, err, tc.expectedConfigErr)
 			if err != nil {
 				return
 			}
 
-			if ts.afterConfigure != nil {
-				ts.afterConfigure()
+			if tc.afterConfigure != nil {
+				tc.afterConfigure()
 			}
 
 			actualLines := 0
-			if ts.expectedLines != 0 {
+			if tc.expectedLines != 0 {
 				go func() {
 					for {
 						select {
@@ -258,18 +261,18 @@ filename: test_files/test_delete.log`,
 			}
 
 			err = f.OneShotAcquisition(out, &tomb)
-			cstest.RequireErrorContains(t, err, ts.expectedErr)
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
-			if ts.expectedLines != 0 {
-				assert.Equal(t, actualLines, ts.expectedLines)
+			if tc.expectedLines != 0 {
+				assert.Equal(t, actualLines, tc.expectedLines)
 			}
 
-			if ts.expectedOutput != "" {
-				assert.Contains(t, hook.LastEntry().Message, ts.expectedOutput)
+			if tc.expectedOutput != "" {
+				assert.Contains(t, hook.LastEntry().Message, tc.expectedOutput)
 				hook.Reset()
 			}
-			if ts.teardown != nil {
-				ts.teardown()
+			if tc.teardown != nil {
+				tc.teardown()
 			}
 		})
 	}
@@ -401,10 +404,11 @@ force_inotify: true`, testPattern),
 		},
 	}
 
-	for _, ts := range tests {
-		t.Run(ts.name, func(t *testing.T) {
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
 			logger, hook := test.NewNullLogger()
-			logger.SetLevel(ts.logLevel)
+			logger.SetLevel(tc.logLevel)
 
 			subLogger := logger.WithFields(log.Fields{
 				"type": "file",
@@ -415,19 +419,19 @@ force_inotify: true`, testPattern),
 
 			f := FileSource{}
 
-			if ts.setup != nil {
-				ts.setup()
+			if tc.setup != nil {
+				tc.setup()
 			}
 
-			err := f.Configure([]byte(ts.config), subLogger)
+			err := f.Configure([]byte(tc.config), subLogger)
 			require.NoError(t, err)
 
-			if ts.afterConfigure != nil {
-				ts.afterConfigure()
+			if tc.afterConfigure != nil {
+				tc.afterConfigure()
 			}
 
 			actualLines := 0
-			if ts.expectedLines != 0 {
+			if tc.expectedLines != 0 {
 				go func() {
 					for {
 						select {
@@ -441,9 +445,9 @@ force_inotify: true`, testPattern),
 			}
 
 			err = f.StreamingAcquisition(out, &tomb)
-			cstest.AssertErrorContains(t, err, ts.expectedErr)
+			cstest.AssertErrorContains(t, err, tc.expectedErr)
 
-			if ts.expectedLines != 0 {
+			if tc.expectedLines != 0 {
 				fd, err := os.Create("test_files/stream.log")
 				if err != nil {
 					t.Fatalf("could not create test file : %s", err)
@@ -461,20 +465,20 @@ force_inotify: true`, testPattern),
 				// we sleep to make sure we detect the new file
 				time.Sleep(1 * time.Second)
 				os.Remove("test_files/stream.log")
-				assert.Equal(t, ts.expectedLines, actualLines)
+				assert.Equal(t, tc.expectedLines, actualLines)
 			}
 
-			if ts.expectedOutput != "" {
+			if tc.expectedOutput != "" {
 				if hook.LastEntry() == nil {
-					t.Fatalf("expected output %s, but got nothing", ts.expectedOutput)
+					t.Fatalf("expected output %s, but got nothing", tc.expectedOutput)
 				}
 
-				assert.Contains(t, hook.LastEntry().Message, ts.expectedOutput)
+				assert.Contains(t, hook.LastEntry().Message, tc.expectedOutput)
 				hook.Reset()
 			}
 
-			if ts.teardown != nil {
-				ts.teardown()
+			if tc.teardown != nil {
+				tc.teardown()
 			}
 
 			tomb.Kill(nil)

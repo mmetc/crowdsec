@@ -1,55 +1,46 @@
-package csconfig
+package csconfig_test
 
 import (
-	"fmt"
-	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLoadPrometheus(t *testing.T) {
-
 	tests := []struct {
 		name           string
-		Input          *Config
+		Input          *csconfig.Config
 		expectedResult string
-		err            string
+		expectedErr    string
 	}{
 		{
 			name: "basic valid configuration",
-			Input: &Config{
-				Prometheus: &PrometheusCfg{
+			Input: &csconfig.Config{
+				Prometheus: &csconfig.PrometheusCfg{
 					Enabled:    true,
 					Level:      "full",
 					ListenAddr: "127.0.0.1",
 					ListenPort: 6060,
 				},
-				Cscli: &CscliCfg{},
+				Cscli: &csconfig.CscliCfg{},
 			},
 			expectedResult: "http://127.0.0.1:6060",
 		},
 	}
 
-	for idx, test := range tests {
-		err := test.Input.LoadPrometheus()
-		if err == nil && test.err != "" {
-			fmt.Printf("TEST '%s': NOK\n", test.name)
-			t.Fatalf("%d/%d expected error, didn't get it", idx, len(tests))
-		} else if test.err != "" {
-			if !strings.HasPrefix(fmt.Sprintf("%s", err), test.err) {
-				fmt.Printf("TEST '%s': NOK\n", test.name)
-				t.Fatalf("%d/%d expected '%s' got '%s'", idx, len(tests),
-					test.err,
-					fmt.Sprintf("%s", err))
-			}
-		}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.Input.LoadPrometheus()
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
-		isOk := assert.Equal(t, test.expectedResult, test.Input.Cscli.PrometheusUrl)
-		if !isOk {
-			t.Fatalf("test '%s' failed\n", test.name)
-		} else {
-			fmt.Printf("TEST '%s': OK\n", test.name)
-		}
+			if tc.expectedErr != "" {
+				return
+			}
+
+			require.Equal(t, tc.expectedResult, tc.Input.Cscli.PrometheusUrl)
+		})
 	}
 }

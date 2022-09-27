@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"gopkg.in/tomb.v2"
+	"github.com/stretchr/testify/require"
+
 )
 
 type cfgTest struct {
@@ -45,9 +47,8 @@ func TestBadBucketsConfig(t *testing.T) {
 		//bad type
 		{BucketFactory{Name: "test", Description: "test1", Type: "ratata"}, false, false},
 	}
-	if err := runTest(CfgTests); err != nil {
-		t.Fatalf("%s", err)
-	}
+	err := runTest(CfgTests)
+	require.NoError(t, err)
 }
 
 func TestLeakyBucketsConfig(t *testing.T) {
@@ -70,10 +71,8 @@ func TestLeakyBucketsConfig(t *testing.T) {
 		{BucketFactory{Name: "test", Description: "test1", Type: "leaky", Capacity: 1, LeakSpeed: "1s", Filter: "true", OverflowFilter: "xu"}, false, true},
 	}
 
-	if err := runTest(CfgTests); err != nil {
-		t.Fatalf("%s", err)
-	}
-
+	err := runTest(CfgTests)
+	require.NoError(t, err)
 }
 
 func TestBlackholeConfig(t *testing.T) {
@@ -84,10 +83,8 @@ func TestBlackholeConfig(t *testing.T) {
 		{BucketFactory{Name: "test", Description: "test1", Type: "trigger", Filter: "true", Blackhole: "abc"}, false, true},
 	}
 
-	if err := runTest(CfgTests); err != nil {
-		t.Fatalf("%s", err)
-	}
-
+	err := runTest(CfgTests)
+	require.NoError(t, err)
 }
 
 func TestTriggerBucketsConfig(t *testing.T) {
@@ -96,10 +93,8 @@ func TestTriggerBucketsConfig(t *testing.T) {
 		{BucketFactory{Name: "test", Description: "test1", Type: "trigger", Filter: "true"}, true, true},
 	}
 
-	if err := runTest(CfgTests); err != nil {
-		t.Fatalf("%s", err)
-	}
-
+	err := runTest(CfgTests)
+	require.NoError(t, err)
 }
 
 func TestCounterBucketsConfig(t *testing.T) {
@@ -114,8 +109,7 @@ func TestCounterBucketsConfig(t *testing.T) {
 		//capacity must be -1
 		{BucketFactory{Name: "test", Description: "test1", Type: "counter", Capacity: 0, Duration: "5s", Filter: "true"}, false, false},
 	}
-	if err := runTest(CfgTests); err != nil {
-		t.Fatalf("%s", err)
-	}
 
+	err := runTest(CfgTests)
+	require.NoError(t, err)
 }

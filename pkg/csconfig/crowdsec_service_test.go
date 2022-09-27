@@ -1,57 +1,42 @@
 package csconfig
 
 import (
-	"fmt"
 	"path/filepath"
-	"strings"
 	"testing"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLoadCrowdsec(t *testing.T) {
 	falseBoolPtr := false
 	acquisFullPath, err := filepath.Abs("./tests/acquis.yaml")
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	require.NoError(t, err)
 
 	acquisInDirFullPath, err := filepath.Abs("./tests/acquis/acquis.yaml")
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	require.NoError(t, err)
 
 	acquisDirFullPath, err := filepath.Abs("./tests/acquis")
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	require.NoError(t, err)
 
 	hubFullPath, err := filepath.Abs("./hub")
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	require.NoError(t, err)
 
 	dataFullPath, err := filepath.Abs("./data")
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	require.NoError(t, err)
 
 	configDirFullPath, err := filepath.Abs("./tests")
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	require.NoError(t, err)
 
 	hubIndexFileFullPath, err := filepath.Abs("./hub/.index.json")
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
+	require.NoError(t, err)
 
 	tests := []struct {
 		name           string
 		Input          *Config
 		expectedResult *CrowdsecServiceCfg
-		err            string
+		expectedErr    string
 	}{
 		{
 			name: "basic valid configuration",
@@ -193,23 +178,14 @@ func TestLoadCrowdsec(t *testing.T) {
 		},
 	}
 
-	for idx, test := range tests {
-		fmt.Printf("TEST '%s'\n", test.name)
-		err := test.Input.LoadCrowdsec()
-		if err == nil && test.err != "" {
-			t.Fatalf("%d/%d expected error, didn't get it", idx, len(tests))
-		} else if test.err != "" {
-			if !strings.HasPrefix(fmt.Sprintf("%s", err), test.err) {
-				t.Fatalf("%d/%d expected '%s' got '%s'", idx, len(tests),
-					test.err,
-					fmt.Sprintf("%s", err))
-			}
-		}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.Input.LoadCrowdsec()
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
-		isOk := assert.Equal(t, test.expectedResult, test.Input.Crowdsec)
-		if !isOk {
-			t.Fatalf("test '%s' failed", test.name)
-		}
+			require.Equal(t, tc.expectedResult, tc.Input.Crowdsec)
+		})
 
 	}
 }

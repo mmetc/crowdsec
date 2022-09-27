@@ -1,115 +1,110 @@
 package exprhelpers
 
 import (
-	"log"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestXMLGetAttributeValue(t *testing.T) {
-	if err := Init(nil); err != nil {
-		log.Fatalf(err.Error())
-	}
+	err := Init(nil)
+	require.NoError(t, err)
 
 	tests := []struct {
-		name         string
-		xmlString    string
-		path         string
-		attribute    string
-		expectResult string
+		name      string
+		xmlString string
+		path      string
+		attribute string
+		expected  string
 	}{
 		{
-			name:         "XMLGetAttributeValue",
-			xmlString:    `<root><child attr="value"/></root>`,
-			path:         "/root/child",
-			attribute:    "attr",
-			expectResult: "value",
+			name:      "XMLGetAttributeValue",
+			xmlString: `<root><child attr="value"/></root>`,
+			path:      "/root/child",
+			attribute: "attr",
+			expected:  "value",
 		},
 		{
-			name:         "Non existing attribute for XMLGetAttributeValue",
-			xmlString:    `<root><child attr="value"/></root>`,
-			path:         "/root/child",
-			attribute:    "asdasd",
-			expectResult: "",
+			name:      "Non existing attribute for XMLGetAttributeValue",
+			xmlString: `<root><child attr="value"/></root>`,
+			path:      "/root/child",
+			attribute: "asdasd",
+			expected:  "",
 		},
 		{
-			name:         "Non existing path for XMLGetAttributeValue",
-			xmlString:    `<root><child attr="value"/></root>`,
-			path:         "/foo/bar",
-			attribute:    "asdasd",
-			expectResult: "",
+			name:      "Non existing path for XMLGetAttributeValue",
+			xmlString: `<root><child attr="value"/></root>`,
+			path:      "/foo/bar",
+			attribute: "asdasd",
+			expected:  "",
 		},
 		{
-			name:         "Invalid XML for XMLGetAttributeValue",
-			xmlString:    `<root><`,
-			path:         "/foo/bar",
-			attribute:    "asdasd",
-			expectResult: "",
+			name:      "Invalid XML for XMLGetAttributeValue",
+			xmlString: `<root><`,
+			path:      "/foo/bar",
+			attribute: "asdasd",
+			expected:  "",
 		},
 		{
-			name:         "Invalid path for XMLGetAttributeValue",
-			xmlString:    `<root><child attr="value"/></root>`,
-			path:         "/foo/bar[@",
-			attribute:    "asdasd",
-			expectResult: "",
+			name:      "Invalid path for XMLGetAttributeValue",
+			xmlString: `<root><child attr="value"/></root>`,
+			path:      "/foo/bar[@",
+			attribute: "asdasd",
+			expected:  "",
 		},
 	}
 
-	for _, test := range tests {
-		result := XMLGetAttributeValue(test.xmlString, test.path, test.attribute)
-		isOk := assert.Equal(t, test.expectResult, result)
-		if !isOk {
-			t.Fatalf("test '%s' failed", test.name)
-		}
-		log.Printf("test '%s' : OK", test.name)
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			result := XMLGetAttributeValue(tc.xmlString, tc.path, tc.attribute)
+			require.Equal(t, tc.expected, result)
+		})
 	}
 
 }
 func TestXMLGetNodeValue(t *testing.T) {
-	if err := Init(nil); err != nil {
-		log.Fatalf(err.Error())
-	}
+	err := Init(nil)
+	require.NoError(t, err)
 
 	tests := []struct {
-		name         string
-		xmlString    string
-		path         string
-		expectResult string
+		name      string
+		xmlString string
+		path      string
+		expected  string
 	}{
 		{
 			name:         "XMLGetNodeValue",
 			xmlString:    `<root><child>foobar</child></root>`,
 			path:         "/root/child",
-			expectResult: "foobar",
+			expected: "foobar",
 		},
 		{
 			name:         "Non existing path for XMLGetNodeValue",
 			xmlString:    `<root><child>foobar</child></root>`,
 			path:         "/foo/bar",
-			expectResult: "",
+			expected: "",
 		},
 		{
 			name:         "Invalid XML for XMLGetNodeValue",
 			xmlString:    `<root><`,
 			path:         "/foo/bar",
-			expectResult: "",
+			expected: "",
 		},
 		{
 			name:         "Invalid path for XMLGetNodeValue",
 			xmlString:    `<root><child>foobar</child></root>`,
 			path:         "/foo/bar[@",
-			expectResult: "",
+			expected: "",
 		},
 	}
 
-	for _, test := range tests {
-		result := XMLGetNodeValue(test.xmlString, test.path)
-		isOk := assert.Equal(t, test.expectResult, result)
-		if !isOk {
-			t.Fatalf("test '%s' failed", test.name)
-		}
-		log.Printf("test '%s' : OK", test.name)
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			result := XMLGetNodeValue(tc.xmlString, tc.path)
+			require.Equal(t, tc.expected, result)
+		})
 	}
 
 }

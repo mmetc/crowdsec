@@ -47,17 +47,19 @@ func TestDateParse(t *testing.T) {
 	logger := log.WithFields(log.Fields{
 		"test": "test",
 	})
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			strTime, err := parser.ParseDate(tt.evt.StrTime, &tt.evt, nil, logger)
-			cstest.RequireErrorContains(t, err, tt.expectedErr)
 
-			if tt.expectedErr != "" {
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			strTime, err := parser.ParseDate(tc.evt.StrTime, &tc.evt, nil, logger)
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
+
+			if tc.expectedErr != "" {
 				return
 			}
 
-			if tt.expectedStrTime != nil {
-				require.Equal(t, *tt.expectedStrTime, strTime["MarshaledTime"])
+			if tc.expectedStrTime != nil {
+				require.Equal(t, *tc.expectedStrTime, strTime["MarshaledTime"])
 			}
 		})
 	}

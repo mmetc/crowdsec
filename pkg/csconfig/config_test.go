@@ -1,20 +1,17 @@
 package csconfig
 
 import (
-	"fmt"
-	"log"
 	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNormalLoad(t *testing.T) {
 
 	_, err := NewConfig("./tests/config.yaml", false, false)
-	if err != nil {
-		t.Fatalf("unexpected error %s", err)
-	}
+	require.NoError(t, err)
 
 	_, err = NewConfig("./tests/xxx.yaml", false, false)
 	if runtime.GOOS != "windows" {
@@ -39,21 +36,16 @@ func TestNewCrowdSecConfig(t *testing.T) {
 			err:            "",
 		},
 	}
-	for _, test := range tests {
-		result := &Config{}
-		isOk := assert.Equal(t, test.expectedResult, result)
-		if !isOk {
-			t.Fatalf("TEST '%s': NOK", test.name)
-		} else {
-			fmt.Printf("TEST '%s': OK\n", test.name)
-		}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			result := &Config{}
+			require.Equal(t, tc.expectedResult, result)
+		})
 	}
-
 }
 
 func TestDefaultConfig(t *testing.T) {
-	x := NewDefaultConfig()
-	if err := x.Dump(); err != nil {
-		log.Fatal(err)
-	}
+	err := NewDefaultConfig().Dump()
+	require.NoError(t, err)
 }

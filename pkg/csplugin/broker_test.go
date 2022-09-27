@@ -77,18 +77,20 @@ func TestGetPluginNameAndTypeFromPath(t *testing.T) {
 			wantErr: false,
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1, err := getPluginTypeAndSubtypeFromPath(tt.args.path)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("getPluginNameAndTypeFromPath() error = %v, wantErr %v", err, tt.wantErr)
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			got, got1, err := getPluginTypeAndSubtypeFromPath(tc.args.path)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("getPluginNameAndTypeFromPath() error = %v, wantErr %v", err, tc.wantErr)
 				return
 			}
-			if got != tt.want {
-				t.Errorf("getPluginNameAndTypeFromPath() got = %v, want %v", got, tt.want)
+			if got != tc.want {
+				t.Errorf("getPluginNameAndTypeFromPath() got = %v, want %v", got, tc.want)
 			}
-			if got1 != tt.want1 {
-				t.Errorf("getPluginNameAndTypeFromPath() got1 = %v, want %v", got1, tt.want1)
+			if got1 != tc.want1 {
+				t.Errorf("getPluginNameAndTypeFromPath() got1 = %v, want %v", got1, tc.want1)
 			}
 		})
 	}
@@ -124,15 +126,16 @@ func TestListFilesAtPath(t *testing.T) {
 			wantErr: true,
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := listFilesAtPath(tt.args.path)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("listFilesAtPath() error = %v, wantErr %v", err, tt.wantErr)
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := listFilesAtPath(tc.args.path)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("listFilesAtPath() error = %v, wantErr %v", err, tc.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("listFilesAtPath() = %v, want %v", got, tt.want)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("listFilesAtPath() = %v, want %v", got, tc.want)
 			}
 		})
 	}
@@ -234,25 +237,26 @@ func TestBrokerInit(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
 			defer tearDown()
 			buildDummyPlugin()
-			if test.action != nil {
-				test.action()
+			if tc.action != nil {
+				tc.action()
 			}
 			pb := PluginBroker{}
 			profiles := csconfig.NewDefaultConfig().API.Server.Profiles
 			profiles = append(profiles, &csconfig.ProfileCfg{
 				Notifications: []string{"dummy_default"},
 			})
-			err := pb.Init(&test.procCfg, profiles, &csconfig.ConfigurationPaths{
+			err := pb.Init(&tc.procCfg, profiles, &csconfig.ConfigurationPaths{
 				PluginDir:       testPath,
 				NotificationDir: "./tests/notifications",
 			})
 			defer pb.Kill()
-			if test.wantErr {
-				assert.ErrorContains(t, err, test.errContains)
+			if tc.wantErr {
+				assert.ErrorContains(t, err, tc.errContains)
 			} else {
 				assert.NoError(t, err)
 			}
