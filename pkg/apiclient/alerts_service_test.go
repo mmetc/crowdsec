@@ -1,4 +1,4 @@
-package apiclient
+package apiclient_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -29,7 +30,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
-	client, err := NewClient(&Config{
+	client, err := apiclient.NewClient(&apiclient.Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -193,7 +194,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 	//log.Debugf("resp : -> %s", spew.Sdump(resp))
 	//log.Debugf("expected : -> %s", spew.Sdump(expected))
 	//first one returns data
-	alerts, resp, err := client.Alerts.List(context.Background(), AlertsListOpts{})
+	alerts, resp, err := client.Alerts.List(context.Background(), apiclient.AlertsListOpts{})
 	if err != nil {
 		log.Errorf("test Unable to list alerts : %+v", err)
 	}
@@ -205,7 +206,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 		t.Errorf("client.Alerts.List returned %+v, want %+v", resp, expected)
 	}
 	//this one doesn't
-	filter := AlertsListOpts{IPEquals: new(string)}
+	filter := apiclient.AlertsListOpts{IPEquals: new(string)}
 	*filter.IPEquals = "1.2.3.4"
 	alerts, resp, err = client.Alerts.List(context.Background(), filter)
 	if err != nil {
@@ -230,7 +231,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
-	client, err := NewClient(&Config{
+	client, err := apiclient.NewClient(&apiclient.Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -419,7 +420,7 @@ func TestAlertsCreateAsMachine(t *testing.T) {
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
-	client, err := NewClient(&Config{
+	client, err := apiclient.NewClient(&apiclient.Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -463,7 +464,7 @@ func TestAlertsDeleteAsMachine(t *testing.T) {
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
-	client, err := NewClient(&Config{
+	client, err := apiclient.NewClient(&apiclient.Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -476,7 +477,7 @@ func TestAlertsDeleteAsMachine(t *testing.T) {
 	}
 
 	defer teardown()
-	alert := AlertsDeleteOpts{IPEquals: new(string)}
+	alert := apiclient.AlertsDeleteOpts{IPEquals: new(string)}
 	*alert.IPEquals = "1.2.3.4"
 	alerts, resp, err := client.Alerts.Delete(context.Background(), alert)
 	require.NoError(t, err)

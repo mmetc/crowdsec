@@ -1,4 +1,4 @@
-package apiclient
+package apiclient_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -21,7 +22,7 @@ func TestNewRequestInvalid(t *testing.T) {
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
-	client, err := NewClient(&Config{
+	client, err := apiclient.NewClient(&apiclient.Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -42,7 +43,7 @@ func TestNewRequestInvalid(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	_, _, err = client.Alerts.List(context.Background(), AlertsListOpts{})
+	_, _, err = client.Alerts.List(context.Background(), apiclient.AlertsListOpts{})
 	assert.Contains(t, err.Error(), `building request: BaseURL must have a trailing slash, but `)
 }
 
@@ -54,7 +55,7 @@ func TestNewRequestTimeout(t *testing.T) {
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
-	client, err := NewClient(&Config{
+	client, err := apiclient.NewClient(&apiclient.Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -72,6 +73,6 @@ func TestNewRequestTimeout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
-	_, _, err = client.Alerts.List(ctx, AlertsListOpts{})
+	_, _, err = client.Alerts.List(ctx, apiclient.AlertsListOpts{})
 	assert.Contains(t, err.Error(), `performing request: context deadline exceeded`)
 }

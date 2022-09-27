@@ -1,4 +1,4 @@
-package apiclient
+package apiclient_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	log "github.com/sirupsen/logrus"
@@ -40,11 +41,11 @@ func TestDecisionsList(t *testing.T) {
 	}
 
 	//ok answer
-	auth := &APIKeyTransport{
+	auth := &apiclient.APIKeyTransport{
 		APIKey: "ixu",
 	}
 
-	newcli, err := NewDefaultClient(apiURL, "v1", "toto", auth.Client())
+	newcli, err := apiclient.NewDefaultClient(apiURL, "v1", "toto", auth.Client())
 	if err != nil {
 		log.Fatalf("new api client: %s", err)
 	}
@@ -68,7 +69,7 @@ func TestDecisionsList(t *testing.T) {
 	}
 
 	//OK decisions
-	decisionsFilter := DecisionsListOpts{IPEquals: new(string)}
+	decisionsFilter := apiclient.DecisionsListOpts{IPEquals: new(string)}
 	*decisionsFilter.IPEquals = "1.2.3.4"
 	decisions, resp, err := newcli.Decisions.List(context.Background(), decisionsFilter)
 
@@ -84,7 +85,7 @@ func TestDecisionsList(t *testing.T) {
 	}
 
 	//Empty return
-	decisionsFilter = DecisionsListOpts{IPEquals: new(string)}
+	decisionsFilter = apiclient.DecisionsListOpts{IPEquals: new(string)}
 	*decisionsFilter.IPEquals = "1.2.3.5"
 	decisions, resp, err = newcli.Decisions.List(context.Background(), decisionsFilter)
 	require.NoError(t, err)
@@ -130,11 +131,11 @@ func TestDecisionsStream(t *testing.T) {
 	}
 
 	//ok answer
-	auth := &APIKeyTransport{
+	auth := &apiclient.APIKeyTransport{
 		APIKey: "ixu",
 	}
 
-	newcli, err := NewDefaultClient(apiURL, "v1", "toto", auth.Client())
+	newcli, err := apiclient.NewDefaultClient(apiURL, "v1", "toto", auth.Client())
 	if err != nil {
 		log.Fatalf("new api client: %s", err)
 	}
@@ -159,7 +160,7 @@ func TestDecisionsStream(t *testing.T) {
 		},
 	}
 
-	decisions, resp, err := newcli.Decisions.GetStream(context.Background(), DecisionsStreamOpts{Startup: true})
+	decisions, resp, err := newcli.Decisions.GetStream(context.Background(), apiclient.DecisionsStreamOpts{Startup: true})
 	require.NoError(t, err)
 
 	if resp.Response.StatusCode != http.StatusOK {
@@ -174,7 +175,7 @@ func TestDecisionsStream(t *testing.T) {
 	}
 
 	//and second call, we get empty lists
-	decisions, resp, err = newcli.Decisions.GetStream(context.Background(), DecisionsStreamOpts{Startup: false})
+	decisions, resp, err = newcli.Decisions.GetStream(context.Background(), apiclient.DecisionsStreamOpts{Startup: false})
 	require.NoError(t, err)
 
 	if resp.Response.StatusCode != http.StatusOK {
@@ -210,7 +211,7 @@ func TestDeleteDecisions(t *testing.T) {
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
-	client, err := NewClient(&Config{
+	client, err := apiclient.NewClient(&apiclient.Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -222,7 +223,7 @@ func TestDeleteDecisions(t *testing.T) {
 		log.Fatalf("new api client: %s", err)
 	}
 
-	filters := DecisionsDeleteOpts{IPEquals: new(string)}
+	filters := apiclient.DecisionsDeleteOpts{IPEquals: new(string)}
 	*filters.IPEquals = "1.2.3.4"
 	deleted, _, err := client.Decisions.Delete(context.Background(), filters)
 	if err != nil {
@@ -233,7 +234,7 @@ func TestDeleteDecisions(t *testing.T) {
 	defer teardown()
 }
 
-func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
+func TestDecisionsStreamOpts_AddQueryParamsToURL(t *testing.T) {
 	baseURLString := "http://localhost:8080/v1/decisions/stream"
 	type fields struct {
 		Startup                bool
@@ -271,30 +272,30 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			o := &DecisionsStreamOpts{
+			o := &apiclient.DecisionsStreamOpts{
 				Startup:                tt.fields.Startup,
 				Scopes:                 tt.fields.Scopes,
 				ScenariosContaining:    tt.fields.ScenariosContaining,
 				ScenariosNotContaining: tt.fields.ScenariosNotContaining,
 			}
-			got, err := o.addQueryParamsToURL(baseURLString)
+			got, err := o.AddQueryParamsToURL(baseURLString)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("DecisionsStreamOpts.addQueryParamsToURL() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("DecisionsStreamOpts.AddQueryParamsToURL() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
 			gotURL, err := url.Parse(got)
 			if err != nil {
-				t.Errorf("DecisionsStreamOpts.addQueryParamsToURL() got error while parsing URL: %s", err)
+				t.Errorf("DecisionsStreamOpts.AddQueryParamsToURL() got error while parsing URL: %s", err)
 			}
 
 			expectedURL, err := url.Parse(tt.want)
 			if err != nil {
-				t.Errorf("DecisionsStreamOpts.addQueryParamsToURL() got error while parsing URL: %s", err)
+				t.Errorf("DecisionsStreamOpts.AddQueryParamsToURL() got error while parsing URL: %s", err)
 			}
 
 			if *gotURL != *expectedURL {
-				t.Errorf("DecisionsStreamOpts.addQueryParamsToURL() = %v, want %v", *gotURL, *expectedURL)
+				t.Errorf("DecisionsStreamOpts.AddQueryParamsToURL() = %v, want %v", *gotURL, *expectedURL)
 			}
 		})
 	}

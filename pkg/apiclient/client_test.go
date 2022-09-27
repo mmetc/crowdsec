@@ -1,4 +1,4 @@
-package apiclient
+package apiclient_test
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	log "github.com/sirupsen/logrus"
 )
@@ -48,7 +49,7 @@ func TestNewClientOk(t *testing.T) {
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
-	client, err := NewClient(&Config{
+	client, err := apiclient.NewClient(&apiclient.Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -69,7 +70,7 @@ func TestNewClientOk(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	_, resp, err := client.Alerts.List(context.Background(), AlertsListOpts{})
+	_, resp, err := client.Alerts.List(context.Background(), apiclient.AlertsListOpts{})
 	if err != nil {
 		t.Fatalf("test Unable to list alerts : %+v", err)
 	}
@@ -85,7 +86,7 @@ func TestNewClientKo(t *testing.T) {
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
-	client, err := NewClient(&Config{
+	client, err := apiclient.NewClient(&apiclient.Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -106,7 +107,7 @@ func TestNewClientKo(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	_, _, err = client.Alerts.List(context.Background(), AlertsListOpts{})
+	_, _, err = client.Alerts.List(context.Background(), apiclient.AlertsListOpts{})
 	assert.Contains(t, err.Error(), `API error: bad login/password`)
 	log.Printf("err-> %s", err)
 }
@@ -118,7 +119,7 @@ func TestNewDefaultClient(t *testing.T) {
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
-	client, err := NewDefaultClient(apiURL, "/v1", "", nil)
+	client, err := apiclient.NewDefaultClient(apiURL, "/v1", "", nil)
 	if err != nil {
 		t.Fatalf("new api client: %s", err)
 	}
@@ -126,7 +127,7 @@ func TestNewDefaultClient(t *testing.T) {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte(`{"code": 401, "message" : "brr"}`))
 	})
-	_, _, err = client.Alerts.List(context.Background(), AlertsListOpts{})
+	_, _, err = client.Alerts.List(context.Background(), apiclient.AlertsListOpts{})
 	assert.Contains(t, err.Error(), `performing request: API error: brr`)
 	log.Printf("err-> %s", err)
 }
@@ -136,7 +137,7 @@ func TestNewClientRegisterKO(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parsing api url: %s", apiURL)
 	}
-	_, err = RegisterClient(&Config{
+	_, err = apiclient.RegisterClient(&apiclient.Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -166,7 +167,7 @@ func TestNewClientRegisterOK(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parsing api url: %s", apiURL)
 	}
-	client, err := RegisterClient(&Config{
+	client, err := apiclient.RegisterClient(&apiclient.Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -194,7 +195,7 @@ func TestNewClientBadAnswer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parsing api url: %s", apiURL)
 	}
-	_, err = RegisterClient(&Config{
+	_, err = apiclient.RegisterClient(&apiclient.Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),

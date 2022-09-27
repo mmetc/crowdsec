@@ -1,4 +1,4 @@
-package apiclient
+package apiclient_test
 
 import (
 	"context"
@@ -9,6 +9,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 )
 
 func TestApiAuth(t *testing.T) {
@@ -35,16 +37,16 @@ func TestApiAuth(t *testing.T) {
 	defer teardown()
 
 	//ok no answer
-	auth := &APIKeyTransport{
+	auth := &apiclient.APIKeyTransport{
 		APIKey: "ixu",
 	}
 
-	newcli, err := NewDefaultClient(apiURL, "v1", "toto", auth.Client())
+	newcli, err := apiclient.NewDefaultClient(apiURL, "v1", "toto", auth.Client())
 	if err != nil {
 		log.Fatalf("new api client: %s", err)
 	}
 
-	alert := DecisionsListOpts{IPEquals: new(string)}
+	alert := apiclient.DecisionsListOpts{IPEquals: new(string)}
 	*alert.IPEquals = "1.2.3.4"
 	_, resp, err := newcli.Decisions.List(context.Background(), alert)
 	require.NoError(t, err)
@@ -54,11 +56,11 @@ func TestApiAuth(t *testing.T) {
 	}
 
 	//ko bad token
-	auth = &APIKeyTransport{
+	auth = &apiclient.APIKeyTransport{
 		APIKey: "bad",
 	}
 
-	newcli, err = NewDefaultClient(apiURL, "v1", "toto", auth.Client())
+	newcli, err = apiclient.NewDefaultClient(apiURL, "v1", "toto", auth.Client())
 	if err != nil {
 		log.Fatalf("new api client: %s", err)
 	}
@@ -71,8 +73,8 @@ func TestApiAuth(t *testing.T) {
 	}
 	assert.Contains(t, err.Error(), "API error: access forbidden")
 	//ko empty token
-	auth = &APIKeyTransport{}
-	newcli, err = NewDefaultClient(apiURL, "v1", "toto", auth.Client())
+	auth = &apiclient.APIKeyTransport{}
+	newcli, err = apiclient.NewDefaultClient(apiURL, "v1", "toto", auth.Client())
 	if err != nil {
 		log.Fatalf("new api client: %s", err)
 	}

@@ -29,7 +29,7 @@ type DecisionsStreamOpts struct {
 	Origins                string `url:"origins,omitempty"`
 }
 
-func (o *DecisionsStreamOpts) addQueryParamsToURL(url string) (string, error) {
+func (o *DecisionsStreamOpts) AddQueryParamsToURL(url string) (string, error) {
 	params, err := qs.Values(o)
 	if err != nil {
 		return "", err
@@ -70,7 +70,7 @@ func (s *DecisionsService) List(ctx context.Context, opts DecisionsListOpts) (*m
 
 func (s *DecisionsService) GetStream(ctx context.Context, opts DecisionsStreamOpts) (*models.DecisionsStreamResponse, *Response, error) {
 	var decisions models.DecisionsStreamResponse
-	u, err := opts.addQueryParamsToURL(s.client.URLPrefix + "/decisions/stream")
+	u, err := opts.AddQueryParamsToURL(s.client.URLPrefix + "/decisions/stream")
 	if err != nil {
 		return nil, nil, err
 	}

@@ -1,4 +1,4 @@
-package apiclient
+package apiclient_test
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	log "github.com/sirupsen/logrus"
@@ -46,7 +47,7 @@ func TestWatcherAuth(t *testing.T) {
 	}
 
 	//ok auth
-	mycfg := &Config{
+	mycfg := &apiclient.Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -54,7 +55,7 @@ func TestWatcherAuth(t *testing.T) {
 		VersionPrefix: "v1",
 		Scenarios:     []string{"crowdsecurity/test"},
 	}
-	client, err := NewClient(mycfg)
+	client, err := apiclient.NewClient(mycfg)
 
 	if err != nil {
 		log.Fatalf("new api client: %s", err)
@@ -70,7 +71,7 @@ func TestWatcherAuth(t *testing.T) {
 	}
 
 	//bad auth
-	mycfg = &Config{
+	mycfg = &apiclient.Config{
 		MachineID:     "BADtest_login",
 		Password:      "BADtest_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -78,7 +79,7 @@ func TestWatcherAuth(t *testing.T) {
 		VersionPrefix: "v1",
 		Scenarios:     []string{"crowdsecurity/test"},
 	}
-	client, err = NewClient(mycfg)
+	client, err = apiclient.NewClient(mycfg)
 
 	if err != nil {
 		log.Fatalf("new api client: %s", err)
@@ -114,7 +115,7 @@ func TestWatcherRegister(t *testing.T) {
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
-	client, err := RegisterClient(&Config{
+	client, err := apiclient.RegisterClient(&apiclient.Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -160,7 +161,7 @@ func TestWatcherUnregister(t *testing.T) {
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
-	mycfg := &Config{
+	mycfg := &apiclient.Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -168,7 +169,7 @@ func TestWatcherUnregister(t *testing.T) {
 		VersionPrefix: "v1",
 		Scenarios:     []string{"crowdsecurity/test"},
 	}
-	client, err := NewClient(mycfg)
+	client, err := apiclient.NewClient(mycfg)
 
 	if err != nil {
 		log.Fatalf("new api client: %s", err)
@@ -214,7 +215,7 @@ func TestWatcherEnroll(t *testing.T) {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
 
-	mycfg := &Config{
+	mycfg := &apiclient.Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -222,7 +223,7 @@ func TestWatcherEnroll(t *testing.T) {
 		VersionPrefix: "v1",
 		Scenarios:     []string{"crowdsecurity/test"},
 	}
-	client, err := NewClient(mycfg)
+	client, err := apiclient.NewClient(mycfg)
 
 	if err != nil {
 		log.Fatalf("new api client: %s", err)
