@@ -13,6 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	"gotest.tools/v3/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConfigure(t *testing.T) {
@@ -81,22 +82,17 @@ func writeToKafka(w *kafka.Writer, logs []string) {
 	}
 }
 
-func createTopic(topic string, broker string) {
+func createTopic(t *testing.T, topic string, broker string) {
 	conn, err := kafka.Dial("tcp", broker)
-	if err != nil {
-		panic(err.Error())
-	}
+	require.NoError(t, err)
 	defer conn.Close()
 
 	controller, err := conn.Controller()
-	if err != nil {
-		panic(err.Error())
-	}
+	require.NoError(t, err)
+
 	var controllerConn *kafka.Conn
 	controllerConn, err = kafka.Dial("tcp", net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port)))
-	if err != nil {
-		panic(err.Error())
-	}
+	require.NoError(t, err)
 	defer controllerConn.Close()
 
 	topicConfigs := []kafka.TopicConfig{
@@ -108,9 +104,7 @@ func createTopic(topic string, broker string) {
 	}
 
 	err = controllerConn.CreateTopics(topicConfigs...)
-	if err != nil {
-		panic(err.Error())
-	}
+	require.NoError(t, err)
 }
 
 func TestStreamingAcquisition(t *testing.T) {
@@ -135,7 +129,7 @@ func TestStreamingAcquisition(t *testing.T) {
 		"type": "kafka",
 	})
 
-	createTopic("crowdsecplaintext", "localhost:9092")
+	createTopic(t, "crowdsecplaintext", "localhost:9092")
 
 	w := kafka.NewWriter(kafka.WriterConfig{
 		Brokers: []string{"localhost:9092"},
@@ -201,7 +195,7 @@ func TestStreamingAcquisitionWithSSL(t *testing.T) {
 		"type": "kafka",
 	})
 
-	createTopic("crowdsecssl", "localhost:9092")
+	createTopic(t, "crowdsecssl", "localhost:9092")
 
 	w2 := kafka.NewWriter(kafka.WriterConfig{
 		Brokers: []string{"localhost:9092"},
