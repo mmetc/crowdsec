@@ -1,4 +1,4 @@
-package fileacquisition
+package fileacquisition_test
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
@@ -52,7 +53,7 @@ exclude_regexps: ["as[a-$d"]`,
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			f := FileSource{}
+			f := fileacquisition.FileSource{}
 			err := f.Configure([]byte(tc.config), subLogger)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
@@ -95,7 +96,7 @@ func TestConfigureDSN(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.dsn, func(t *testing.T) {
-			f := FileSource{}
+			f := fileacquisition.FileSource{}
 			err := f.ConfigureByDSN(tc.dsn, map[string]string{"type": "testtype"}, subLogger)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
@@ -230,7 +231,7 @@ filename: test_files/test_delete.log`,
 
 			tomb := tomb.Tomb{}
 			out := make(chan types.Event)
-			f := FileSource{}
+			f := fileacquisition.FileSource{}
 
 			if tc.setup != nil {
 				tc.setup()
@@ -417,7 +418,7 @@ force_inotify: true`, testPattern),
 			tomb := tomb.Tomb{}
 			out := make(chan types.Event)
 
-			f := FileSource{}
+			f := fileacquisition.FileSource{}
 
 			if tc.setup != nil {
 				tc.setup()
@@ -495,7 +496,7 @@ exclude_regexps: ["\\.gz$"]`
 		"type": "file",
 	})
 
-	f := FileSource{}
+	f := fileacquisition.FileSource{}
 	if err := f.Configure([]byte(config), subLogger); err != nil {
 		subLogger.Fatalf("unexpected error: %s", err)
 	}
