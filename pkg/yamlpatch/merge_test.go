@@ -52,7 +52,7 @@ func strip(s string) string {
 	// It's difficult to write string constants that are valid YAML. Normalize
 	// strings for ease of testing.
 	s = strings.TrimSpace(s)
-	s = strings.ReplaceAll(s, "\t", "  ")
+	s = strings.Replace(s, "\t", "  ", -1)
 	return s
 }
 

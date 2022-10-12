@@ -5,6 +5,7 @@ run:
     - pkg/time/rate
   skip-files:
     - pkg/database/ent/generate.go
+    - pkg/yamlpatch/merge_test.go
 
 linters-settings:
   gocyclo:
@@ -48,7 +49,6 @@ linters:
     - scopelint         # Scopelint checks for unpinned variables in go programs
     - structcheck       # The owner seems to have abandoned the linter.  Replaced by unused.
     - varcheck          # The owner seems to have abandoned the linter.  Replaced by unused.
-    - forcetypeassert   # Disable for now. The changes are too much to fix this with unknown effects.
 
     #
     # Enabled
@@ -78,6 +78,7 @@ linters:
     # - logrlint            # Check logr arguments.
     # - makezero            # Finds slice declarations with non-zero initial length
     # - misspell            # Finds commonly misspelled English words in comments
+    # - nilerr              # Finds the code that returns nil even if it checks that the error is not nil.
     # - nolintlint          # Reports ill-formed or insufficient nolint directives
     # - predeclared         # find code that shadows one of Go's predeclared identifiers
     # - reassign            # Checks that package variables are not reassigned
@@ -90,7 +91,6 @@ linters:
     # - unconvert           # Remove unnecessary type conversions
     # - unused              # (megacheck): Checks Go code for unused constants, variables, functions and types
     # - usestdlibvars       # A linter that detect the possibility to use variables/constants from the Go standard library.
-    # - forcetypeassert       # finds forced type assertions
 
     #
     # Recommended? (easy)
@@ -107,7 +107,6 @@ linters:
     - gosec                 # (gas): Inspects source code for security problems
     - lll                   # Reports long lines
     - nakedret              # Finds naked returns in functions greater than a specified function length
-    #    - nilerr                # Finds the code that returns nil even if it checks that the error is not nil.
     - nonamedreturns        # Reports all named returns
     - nosprintfhostport     # Checks for misuse of Sprintf to construct a host with port in a URL.
     - promlinter            # Check Prometheus metrics naming via promlint
@@ -144,6 +143,7 @@ linters:
     #
     - cyclop                # checks function and package cyclomatic complexity
     - dupl                  # Tool for code clone detection
+    - forcetypeassert       # finds forced type assertions
     - gocognit              # Computes and checks the cognitive complexity of functions
     - gocyclo               # Computes and checks the cyclomatic complexity of functions
     - godox                 # Tool for detection of FIXME, TODO and other comment keywords
@@ -192,23 +192,6 @@ issues:
       text: "Error return value of `.*` is not checked"
 
     #
-    # staticcheck
-    #
-
-    #  - linters:
-    #      - staticcheck
-    #    text: "SA4009: argument .* is overwritten before first use"
-    #  - linters:
-    #      - staticcheck
-    #    text: "SA4009.related information.: assignment to .*"
-    #  - linters:
-    #      - staticcheck
-    #    text: "SA4006: this value of .* is never used"
-    #  - linters:
-    #      - staticcheck
-    #    text: "SA1006: printf-style function with dynamic format string and no further arguments should use print-style function instead"
-
-    #
     # gocritic
     #
 
@@ -224,3 +207,6 @@ issues:
         - gocritic
       text: "appendAssign: append result not assigned to the same slice"
 
+    - linters:
+        - gocritic
+      text: "commentFormatting: put a space between `//` and comment text"
