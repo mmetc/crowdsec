@@ -29,16 +29,16 @@ func debugHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	}
 	//todo : properly stop acquis with the tail readers
 	if tmpFile, err = leaky.DumpBucketsStateAt(time.Now().UTC(), cConfig.Crowdsec.BucketStateDumpDir, buckets); err != nil {
-		log.Warningf("Failed dumping bucket state : %s", err)
+		log.Warningf("Failed to dump bucket state : %s", err)
 	}
 	if err := leaky.ShutdownAllBuckets(buckets); err != nil {
-		log.Warningf("while shutting down routines : %s", err)
+		log.Warningf("Failed to shut down routines : %s", err)
 	}
-	log.Printf("shutdown is finished buckets are in %s", tmpFile)
+	log.Printf("Shutdown is finished, buckets are in %s", tmpFile)
 	return nil
 }
 
-func reloadHandler(sig os.Signal, cConfig *csconfig.Config) error {
+func reloadHandler(sig os.Signal, cConfig *csconfig.Config) error {  //nolint:staticcheck
 	var tmpFile string
 	var err error
 	/*
@@ -52,7 +52,7 @@ func reloadHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	crowdsecTomb = tomb.Tomb{}
 	pluginTomb = tomb.Tomb{}
 
-	cConfig, err = csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
+	cConfig, err = csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)	//nolint:staticcheck
 	if err != nil {
 		return err
 	}
