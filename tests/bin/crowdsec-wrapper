@@ -19,6 +19,12 @@ mkdir -p "${LOCAL_DIR}/var/lib/coverage"
 # SIGPIPE.
 set +e
 
+trap reload_config 1
+
+reload_config() {
+    killall -1 crowdsec.cover
+}
+
 # Arguments to crowdsec are passed through a temporary, newline-delimited
 # file courtesy of github.com/confluentinc/bincover. Coverage data will be
 # merged at the end of the test run.

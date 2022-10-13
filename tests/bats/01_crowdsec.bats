@@ -51,7 +51,7 @@ teardown() {
 @test "crowdsec - print error on exit" {
     # errors that cause program termination are printed to stderr, not only logs
     config_set '.db_config.type="meh"'
-    run -1 --separate-stderr "${BIN_DIR}/crowdsec"
+    run -1 --separate-stderr "${CROWDSEC}"
     refute_output
     assert_stderr --partial "unable to create database client: unknown database type 'meh'"
 }
@@ -70,7 +70,6 @@ teardown() {
     PID="$output"
     assert_file_exist "$log_old"
     assert_file_contains "$log_old" "Starting processing data"
-    truncate -s0 "$log_old"
 
     logdir2=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp -u)
     log_new="${logdir2}/crowdsec.log"
@@ -78,12 +77,22 @@ teardown() {
 
     config_disable_agent
 
-    run -0 kill -1 "$PID"
+    sleep 5
+
+    run -0 kill -HUP "$PID"
 
     for ((i=0; i<20; i++)); do
         sleep 1
         grep -q "killing all plugins" <"$log_old" && break
     done
+
+    echo "waited $i seconds"
+
+    echo
+    echo "OLD LOG"
+    echo
+    ls -la "$log_old" || true
+    cat "$log_old" || true
 
     assert_file_contains "$log_old" "SIGHUP received, reloading"
     assert_file_contains "$log_old" "Crowdsec engine shutting down"
@@ -93,6 +102,8 @@ teardown() {
     assert_file_contains "$log_old" "plugingTomb dying"
     assert_file_contains "$log_old" "killing all plugins"
 
+    sleep 5
+
     assert_file_exist "$log_new"
 
     for ((i=0; i<20; i++)); do
@@ -100,13 +111,17 @@ teardown() {
         grep -q "Reload is finished" <"$log_old" && break
     done
 
+    echo "waited $i seconds"
+
+    echo
+    echo "NEW LOG"
+    echo
+    ls -la "$log_new" || true
+    cat "$log_new" || true
+
     assert_file_contains "$log_new" "CrowdSec Local API listening on 127.0.0.1:8080"
     assert_file_contains "$log_new" "Reload is finished"
 
     run -0 ./instance-crowdsec stop
 }
-
-
-
-
 
