@@ -246,7 +246,7 @@ func (w *WinEventLogSource) UnmarshalConfig(yamlConfig []byte) error {
 
 	w.config.Mode = configuration.TAIL_MODE
 
-	if config.XPathQuery != "" {
+	if w.config.XPathQuery != "" {
 		w.query = w.config.XPathQuery
 	} else {
 		w.query, err = w.buildXpathQuery()

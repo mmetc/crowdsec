@@ -229,7 +229,7 @@ func (os ExprOS) VersionIsLower(version string) (bool, error) {
 	return !result, nil
 }
 
-// ExprEnvironment is used to expose functions and values to to the rule engine.
+// ExprEnvironment is used to expose functions and values to the rule engine.
 // It can cache the results of service detection commands, like systemctl etc.
 type ExprEnvironment struct {
 	OS ExprOS
