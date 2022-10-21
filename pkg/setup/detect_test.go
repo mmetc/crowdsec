@@ -74,13 +74,19 @@ func tempYAML(t *testing.T, content string) string {
 func TestPathExists(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
+	type test struct {
 		path     string
 		expected bool
-	}{
-		{"/boot", true},
-		{"/tmp", true},
+	}
+
+	tests := []test{
 		{"/this-should-not-exist", false},
+	}
+
+	if runtime.GOOS == "windows" {
+		tests = append(tests, test{`C:\`, true})
+	} else {
+		tests = append(tests, test{"/tmp", true})
 	}
 
 	for _, tc := range tests {
@@ -970,7 +976,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				    datasource:
 				      source: wineventlog`,
 			expected: setup.Setup{Setup:[]setup.ServiceSetup{}},
-			expectedErr: "",
+			expectedErr: "invalid datasource for foobar: event_channel or xpath_query must be set",
 		})
 	}
 
