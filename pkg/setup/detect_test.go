@@ -14,6 +14,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/setup"
 )
 
+//nolint:dupword
 var fakeSystemctlOutput = `UNIT FILE                                 STATE    VENDOR PRESET
 crowdsec-setup-detect.service            enabled  enabled
 apache2.service                           enabled  enabled
@@ -205,7 +206,7 @@ func TestListSupported(t *testing.T) {
 			"",
 		},
 		{
-			"invalid yaml: blah blah",
+			"invalid yaml: blahblah",
 			"blahblah",
 			nil,
 			"yaml: unmarshal errors:",
