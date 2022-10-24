@@ -40,3 +40,5 @@ msi
 *.msi
 **/*.nupkg
 *.tgz
+
+# stuff
