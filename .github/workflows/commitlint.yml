@@ -1,4 +1,4 @@
-name: Lint Commit Messages
+name: "Lint Commit Messages"
 on: [pull_request]
 
 jobs:
@@ -10,5 +10,5 @@ jobs:
           fetch-depth: 0
       - uses: wagoid/commitlint-github-action@v5
         with:
-          # configFile: .github/commitlint.config.js
+          configFile: .github/commitlint.config.js
           helpURL: https://github.com/crowdsecurity/crowdsec/blob/master/.github/commitlint.md
