@@ -1,4 +1,3 @@
-// blallblbalablablbal
 module.exports = {
     extends: [
         "@commitlint/config-conventional"
