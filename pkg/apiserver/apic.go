@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"math/rand"
 	"strconv"
 	"strings"
 	"sync"
@@ -125,13 +126,19 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 	return ret, err
 }
 
+func randomDuration(d time.Duration) time.Duration {
+	return time.Duration(float64(d) * (0.5 + 1.0*rand.Float64()))
+}
+
 // keep track of all alerts in cache and push it to CAPI every PushInterval.
 func (a *apic) Push() error {
 	defer types.CatchPanic("lapi/pushToAPIC")
 
 	var cache models.AddSignalsRequest
-	ticker := time.NewTicker(a.pushInterval)
-	log.Infof("Start push to CrowdSec Central API (interval: %s)", PushInterval)
+	firstPushInterval := randomDuration(a.pushInterval).Round(time.Second)
+	ticker := time.NewTicker(firstPushInterval)
+
+	log.Infof("Start push to CrowdSec Central API (interval: %s once, then %s)", firstPushInterval, a.pushInterval)
 
 	for {
 		select {
@@ -145,6 +152,7 @@ func (a *apic) Push() error {
 			go a.Send(&cache)
 			return nil
 		case <-ticker.C:
+			ticker.Reset(a.pushInterval)
 			if len(cache) > 0 {
 				a.mu.Lock()
 				cacheCopy := cache
@@ -469,7 +477,9 @@ func setAlertScenario(add_counters map[string]map[string]int, delete_counters ma
 
 func (a *apic) Pull() error {
 	defer types.CatchPanic("lapi/pullFromAPIC")
-	log.Infof("Start pull from CrowdSec Central API (interval: %s)", PullInterval)
+
+	firstPullInterval := randomDuration(a.pullInterval).Round(time.Minute)
+	log.Infof("Start pull from CrowdSec Central API (interval: %s once, then %s)", firstPullInterval, a.pullInterval)
 
 	toldOnce := false
 	for {
@@ -489,10 +499,13 @@ func (a *apic) Pull() error {
 	if err := a.PullTop(); err != nil {
 		log.Errorf("capi pull top: %s", err)
 	}
-	ticker := time.NewTicker(a.pullInterval)
+
+	ticker := time.NewTicker(firstPullInterval)
+
 	for {
 		select {
 		case <-ticker.C:
+			ticker.Reset(a.pullInterval)
 			if err := a.PullTop(); err != nil {
 				log.Errorf("capi pull top: %s", err)
 				continue
@@ -550,8 +563,11 @@ func (a *apic) GetMetrics() (*models.Metrics, error) {
 func (a *apic) SendMetrics(stop chan (bool)) {
 	defer types.CatchPanic("lapi/metricsToAPIC")
 
-	log.Infof("Start send metrics to CrowdSec Central API (interval: %s)", a.metricsInterval)
-	ticker := time.NewTicker(a.metricsInterval)
+	firstMetricsInterval := randomDuration(a.metricsInterval).Round(time.Minute)
+	ticker := time.NewTicker(firstMetricsInterval)
+
+	log.Infof("Start send metrics to CrowdSec Central API (interval: %s once, then %s)", firstMetricsInterval, a.metricsInterval)
+
 	for {
 		metrics, err := a.GetMetrics()
 		if err != nil {
@@ -568,7 +584,7 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 		case <-stop:
 			return
 		case <-ticker.C:
-			continue
+			ticker.Reset(a.metricsInterval)
 		case <-a.metricsTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.pullTomb.Kill(nil)
 			a.pushTomb.Kill(nil)
