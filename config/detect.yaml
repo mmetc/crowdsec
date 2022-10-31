@@ -18,6 +18,7 @@ detect:
       collections:
         - crowdsecurity/apache2
     datasource:
+      source: file
       filenames:
         - /var/log/apache2/*.log
       labels:
@@ -31,6 +32,7 @@ detect:
       collections:
         - crowdsecurity/apache2
     datasource:
+      source: file
       filenames:
         - /var/log/httpd/*.log
         # XXX /var/log/*http*/*.log
@@ -48,6 +50,7 @@ detect:
       collections:
         - crowdsecurity/asterisk
     datasource:
+      source: file
       labels:
         type: asterisk
       filenames:
@@ -64,6 +67,7 @@ detect:
       collections:
         - crowdsecurity/caddy
     datasource:
+      source: file
       labels:
         type: caddy
       filenames:
@@ -80,6 +84,7 @@ detect:
       collections:
         - crowdsecurity/dovecot
     datasource:
+      source: file
       labels:
         type: syslog
       filenames:
@@ -96,6 +101,7 @@ detect:
       collections:
         - LePresidente/emby
     datasource:
+      source: file
       labels:
         type: emby
       filenames:
@@ -132,6 +138,7 @@ detect:
       collections:
         - crowdsecurity/gitea
     datasource:
+      source: file
       labels:
         type: gitea
       filenames:
@@ -148,6 +155,7 @@ detect:
       collections:
         - crowdsecurity/haproxy
     datasource:
+      source: file
       labels:
         type: haproxy
       filenames:
@@ -163,10 +171,10 @@ detect:
     install:
       collections:
         - firewallservices/lemonldap-ng
-    datasource:
-      # XXX todo where are the logs?
-      labels:
-        type: syslog
+    #datasource:
+    #  # XXX todo where are the logs?
+    #  labels:
+    #    type: syslog
 
   #
   # crowdsecurity/mariadb
@@ -179,6 +187,7 @@ detect:
       collections:
         - crowdsecurity/mariadb
     datasource:
+      source: file
       labels:
         type: mysql
       filenames:
@@ -195,6 +204,7 @@ detect:
       collections:
         - crowdsecurity/mysql
     datasource:
+      source: file
       labels:
         type: mysql
       filenames:
@@ -211,6 +221,7 @@ detect:
       collections:
         - crowdsecurity/nginx
     datasource:
+      source: file
       labels:
         type: nginx
       filenames:
@@ -223,6 +234,7 @@ detect:
       collections:
         - crowdsecurity/nginx
     datasource:
+      source: file
       labels:
         type: nginx
       filenames:
@@ -239,6 +251,7 @@ detect:
       collections:
         - crowdsecurity/odoo
     datasource:
+      source: file
       labels:
         type: odoo
       filenames:
@@ -260,6 +273,7 @@ detect:
       collections:
         - LePresidente/ombi
     datasource:
+      source: file
       labels:
         type: ombi
       filenames:
@@ -277,6 +291,7 @@ detect:
       collections:
         - crowdsecurity/pgsql
     datasource:
+      source: file
       labels:
         type: postgres
       filenames:
@@ -290,6 +305,7 @@ detect:
       collections:
         - crowdsecurity/pgsql
     datasource:
+      source: file
       labels:
         type: postgres
       filenames:
@@ -306,6 +322,7 @@ detect:
       collections:
         - crowdsecurity/postfix
     datasource:
+      source: file
       labels:
         type: syslog
       filenames:
@@ -322,6 +339,7 @@ detect:
       collections:
         - crowdsecurity/proftpd
     datasource:
+      source: file
       labels:
         type: proftpd
       filenames:
@@ -339,6 +357,7 @@ detect:
         - fulljackz/pureftpd
     # XXX ?
     datasource:
+      source: file
       labels:
         type: syslog
       filenames:
@@ -357,6 +376,7 @@ detect:
       collections:
         - crowdsecurity/smb
     datasource:
+      source: file
       labels:
         type: smb
       filenames:
@@ -375,6 +395,7 @@ detect:
       collections:
         - crowdsecurity/sshd
     datasource:
+      source: file
       labels:
         type: syslog
       filenames:
@@ -393,6 +414,7 @@ detect:
       collections:
         - crowdsecurity/suricata
     datasource:
+      source: file
       labels:
         type: suricata-evelogs
       filenames:
@@ -409,6 +431,7 @@ detect:
       collections:
         - crowdsecurity/vsftpd
     datasource:
+      source: file
       labels:
         type: vsftpd
       filenames:
@@ -425,6 +448,7 @@ detect:
       collections:
         - crowdsecurity/linux
     datasource:
+      source: file
       labels:
         type: syslog
       filenames:

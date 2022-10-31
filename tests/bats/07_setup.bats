@@ -783,7 +783,6 @@ update-notifier-motd.timer              enabled enabled
 }
 
 @test "cscli setup validate" {
-
     # an empty file is not enough
     run -1 --separate-stderr cscli setup validate /dev/null
     assert_output "EOF"

@@ -877,6 +877,17 @@ func TestDetectDatasourceValidation(t *testing.T) {
 			expected: setup.Setup{Setup:[]setup.ServiceSetup{}},
 			expectedErr: "while parsing {{.DetectYaml}}: yaml: unmarshal errors:\n  line 6: field source not found in type setup.Service",
 		}, {
+			name: "source is mismatched",
+			config: `
+				version: 1.0
+				detect:
+				  foobar:
+				    datasource:
+				      source: journalctl
+				      filename: /path/to/file.log`,
+			expected: setup.Setup{Setup:[]setup.ServiceSetup{}},
+			expectedErr: "invalid datasource for foobar: cannot parse JournalCtlSource configuration: yaml: unmarshal errors:\n  line 1: field filename not found in type journalctlacquisition.JournalCtlConfiguration",
+		}, {
 			name: "source file: required fields",
 			config: `
 				version: 1.0
@@ -999,6 +1010,3 @@ func TestDetectDatasourceValidation(t *testing.T) {
 		})
 	}
 }
-
-
-
