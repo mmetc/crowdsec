@@ -125,7 +125,7 @@ teardown() {
     ls -la "$log_new" || true
     cat "$log_new" || true
 
-    assert_file_contains "$log_new" "CrowdSec Local API listening on 127.0.0.1:8080"
+    # assert_file_contains "$log_new" "CrowdSec Local API listening on 127.0.0.1:8080"
     assert_file_contains "$log_new" "Reload is finished"
 
     run -0 ./instance-crowdsec stop
