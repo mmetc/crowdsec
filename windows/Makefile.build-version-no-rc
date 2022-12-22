@@ -1,0 +1,4 @@
+
+build-version-no-rc:
+	@echo BUILD_VERSION=$(firstword $(subst -, ,$(shell git describe --tags)))
+
