@@ -10,17 +10,19 @@ jobs:
     name: Build
     runs-on: windows-2019
     steps:
-    - name: Set up Go 1.19
-      uses: actions/setup-go@v3
-      with:
-        go-version: 1.19
-      id: go
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v3
-    - name: Build
-      run: make windows_installer
-    - name: Upload MSI
-      uses: actions/upload-artifact@v2
-      with:
-        path: crowdsec*msi
-        name: crowdsec.msi
+      - name: Set up Go 1.19
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+        id: go
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Build
+        run: make windows_installer
+      - name: Upload MSI
+        uses: actions/upload-artifact@v2
+        with:
+          path: crowdsec*msi
+          name: crowdsec.msi
