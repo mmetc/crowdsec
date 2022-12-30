@@ -1,0 +1,63 @@
+name: Docker tests
+
+on:
+  push:
+    branches:
+      - master
+      - releases/**
+    paths-ignore:
+      - "README.md"
+  pull_request:
+    branches:
+      - master
+      - releases/**
+    paths-ignore:
+      - "README.md"
+
+jobs:
+  lint:
+    name: "Hadolint"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: hadolint/hadolint-action@v3.0.0
+        with:
+          dockerfile: Dockerfile
+          format: tty
+        if: ${{ always() }}
+
+      - uses: hadolint/hadolint-action@v3.0.0
+        with:
+          dockerfile: Dockerfile
+          format: json
+        if: ${{ always() }}
+
+      - uses: hadolint/hadolint-action@v3.0.0
+        with:
+          dockerfile: Dockerfile
+          format: checkstyle
+        if: ${{ always() }}
+
+      - uses: hadolint/hadolint-action@v3.0.0
+        with:
+          dockerfile: Dockerfile
+          format: codeclimate
+        if: ${{ always() }}
+
+      - uses: hadolint/hadolint-action@v3.0.0
+        with:
+          dockerfile: Dockerfile
+          format: codacy
+        if: ${{ always() }}
+
+      - uses: hadolint/hadolint-action@v3.0.0
+        with:
+          dockerfile: Dockerfile
+          format: sarif
+        if: ${{ always() }}
+
+#      - uses: hadolint/hadolint-action@v3.0.0
+#        with:
+#          dockerfile: Dockerfile-alpine
+
