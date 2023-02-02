@@ -25,4 +25,4 @@ jobs:
     - name: Dependency Review
       uses: actions/dependency-review-action@v3
       with:
-        deny-licenses: 'GPL-1.0+'
+        deny-licenses: 'MIT'
