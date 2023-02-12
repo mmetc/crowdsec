@@ -1,17 +1,10 @@
 #!/usr/bin/env python
 
-from pytest_cs import log_waiters, Status
+from pytest_cs import log_waiters
 
 import pytest
 
 pytestmark = pytest.mark.docker
-
-
-def test_container(container):
-    with container(image='hello-world', wait_status=Status.EXITED) as cont:
-        for waiter in log_waiters(cont, timeout=5):
-            with waiter as matcher:
-                matcher.fnmatch_lines(["Hello from Docker!"])
 
 
 def test_crowdsec(crowdsec):

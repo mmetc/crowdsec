@@ -11,7 +11,7 @@ def test_metrics_port_default(crowdsec, flavor):
     """Test metrics"""
     port = 6060
     with crowdsec(flavor=flavor) as cont:
-        wait_for_log(cont, 'Starting processing data')
+        wait_for_log(cont, "*Starting processing data*")
         res = cont.exec_run(f'wget -O - http://127.0.0.1:{port}/metrics')
         if 'executable file not found' in res.output.decode():
             # TODO: find an alternative to wget
@@ -26,7 +26,7 @@ def test_metrics_port_default_ipv6(crowdsec, flavor):
     pytest.skip('ipv6 not supported yet')
     port = 6060
     with crowdsec(flavor=flavor) as cont:
-        wait_for_log(cont, 'Starting processing data')
+        wait_for_log(cont, "*Starting processing data*")
         res = cont.exec_run(f'wget -O - http://[::1]:{port}/metrics')
         if 'executable file not found' in res.output.decode():
             # TODO: find an alternative to wget
@@ -43,7 +43,7 @@ def test_metrics_port(crowdsec, flavor):
         "METRICS_PORT": port
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, 'Starting processing data')
+        wait_for_log(cont, "*Starting processing data*")
         res = cont.exec_run(f'wget -O - http://127.0.0.1:{port}/metrics')
         if 'executable file not found' in res.output.decode():
             # TODO: find an alternative to wget
@@ -61,7 +61,7 @@ def test_metrics_port_ipv6(crowdsec, flavor):
         "METRICS_PORT": port
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, 'Starting processing data')
+        wait_for_log(cont, "*Starting processing data*")
         res = cont.exec_run(f'wget -O - http://[::1]:{port}/metrics')
         if 'executable file not found' in res.output.decode():
             # TODO: find an alternative to wget

@@ -10,7 +10,7 @@ pytestmark = pytest.mark.docker
 def test_local_api_url_default(crowdsec, flavor):
     """Test LOCAL_API_URL (default)"""
     with crowdsec(flavor=flavor) as cont:
-        wait_for_log(cont, "Starting processing data")
+        wait_for_log(cont, "*Starting processing data*")
         res = cont.exec_run('cscli lapi status')
         assert res.exit_code == 0
         stdout = res.output.decode()
@@ -26,7 +26,7 @@ def test_local_api_url(crowdsec, flavor):
         "LOCAL_API_URL": "http://127.0.0.1:8080"
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "Starting processing data")
+        wait_for_log(cont, "*Starting processing data*")
         res = cont.exec_run('cscli lapi status')
         assert res.exit_code == 0
         stdout = res.output.decode()
@@ -49,7 +49,7 @@ def test_local_api_url_ipv6(crowdsec, flavor):
         "LOCAL_API_URL": "http://[::1]:8080"
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "Starting processing data")
+        wait_for_log(cont, "*Starting processing data*")
         res = cont.exec_run('cscli lapi status')
         assert res.exit_code == 0
         stdout = res.output.decode()

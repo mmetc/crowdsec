@@ -16,7 +16,7 @@ pytestmark = pytest.mark.docker
 def test_preinstalled_hub(crowdsec, flavor):
     """Test hub objects installed in the entrypoint"""
     with crowdsec(flavor=flavor) as cont:
-        wait_for_log(cont, "Starting processing data")
+        wait_for_log(cont, "*Starting processing data*")
         res = cont.exec_run('cscli hub list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)

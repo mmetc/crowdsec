@@ -30,15 +30,17 @@ def test_cold_logs(crowdsec, tmp_path_factory, flavor):
     # missing type
 
     with crowdsec(flavor=flavor, environment=env, volumes=volumes, wait_status=Status.EXITED) as cont:
-        wait_for_log(cont, "-dsn requires a -type argument")
+        wait_for_log(cont, "*-dsn requires a -type argument*")
 
     env['TYPE'] = 'syslog'
 
     with crowdsec(flavor=flavor, environment=env, volumes=volumes) as cont:
-        wait_for_log(cont, "Adding file /var/log/toto.log to filelist")
-        wait_for_log(cont, "reading /var/log/toto.log at once")
-        wait_for_log(cont, "Ip 1.1.1.172 performed 'crowdsecurity/ssh-bf' (6 events over 5s)")
-        wait_for_log(cont, "crowdsec shutdown")
+        wait_for_log(cont, [
+            "*Adding file /var/log/toto.log to filelist*",
+            "*reading /var/log/toto.log at once*",
+            "*Ip 1.1.1.172 performed 'crowdsecurity/ssh-bf' (6 events over 5s)*",
+            "*crowdsec shutdown*"
+        ])
 
 
 def test_cold_logs_missing_dsn(crowdsec, flavor):
@@ -47,4 +49,4 @@ def test_cold_logs_missing_dsn(crowdsec, flavor):
     }
 
     with crowdsec(flavor=flavor, environment=env, wait_status=Status.EXITED) as cont:
-        wait_for_log(cont, "-type requires a -dsn argument")
+        wait_for_log(cont, "*-type requires a -dsn argument*")

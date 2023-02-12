@@ -21,7 +21,7 @@ def test_install_two_parsers(crowdsec, flavor):
         'PARSERS': f'{it1} {it2}'
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "Starting processing data")
+        wait_for_log(cont, "*Starting processing data*")
         res = cont.exec_run('cscli parsers list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
@@ -41,7 +41,7 @@ def test_disable_parser(crowdsec, flavor):
         'DISABLE_PARSERS': it
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "Starting processing data")
+        wait_for_log(cont, "*Starting processing data*")
         res = cont.exec_run('cscli parsers list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
@@ -59,7 +59,7 @@ def test_install_and_disable_parser(crowdsec, flavor):
         'DISABLE_PARSERS': it,
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "Starting processing data")
+        wait_for_log(cont, "*Starting processing data*")
         res = cont.exec_run('cscli parsers list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)

@@ -23,7 +23,7 @@ def test_missing_key_file(crowdsec, flavor):
 
     with crowdsec(flavor=flavor, environment=env, wait_status=Status.EXITED) as cont:
         # XXX: this message appears twice, is that normal?
-        wait_for_log(cont, "while serving local API: missing TLS key file")
+        wait_for_log(cont, "*while serving local API: missing TLS key file*")
 
 
 def test_missing_cert_file(crowdsec, flavor):
@@ -35,7 +35,7 @@ def test_missing_cert_file(crowdsec, flavor):
     }
 
     with crowdsec(flavor=flavor, environment=env, wait_status=Status.EXITED) as cont:
-        wait_for_log(cont, "while serving local API: missing TLS cert file")
+        wait_for_log(cont, "*while serving local API: missing TLS cert file*")
 
 
 def test_tls_missing_ca(crowdsec, flavor, certs_dir):
@@ -53,7 +53,7 @@ def test_tls_missing_ca(crowdsec, flavor, certs_dir):
     }
 
     with crowdsec(flavor=flavor, environment=env, volumes=volumes, wait_status=Status.EXITED) as cont:
-        wait_for_log(cont, "certificate signed by unknown authority")
+        wait_for_log(cont, "*certificate signed by unknown authority*")
 
 
 def test_tls_legacy_var(crowdsec, flavor, certs_dir):
@@ -72,7 +72,7 @@ def test_tls_legacy_var(crowdsec, flavor, certs_dir):
     }
 
     with crowdsec(flavor=flavor, environment=env, volumes=volumes) as cont:
-        wait_for_log(cont, "Starting processing data")
+        wait_for_log(cont, "*Starting processing data*")
         x = cont.exec_run('cscli lapi status')
         assert x.exit_code == 0
         stdout = x.output.decode()
@@ -97,7 +97,7 @@ def test_tls_mutual_monolith(crowdsec, flavor, certs_dir):
     }
 
     with crowdsec(flavor=flavor, environment=env, volumes=volumes) as cont:
-        wait_for_log(cont, "Starting processing data")
+        wait_for_log(cont, "*Starting processing data*")
         x = cont.exec_run('cscli lapi status')
         assert x.exit_code == 0
         stdout = x.output.decode()
@@ -120,7 +120,7 @@ def test_tls_lapi_var(crowdsec, flavor, certs_dir):
     }
 
     with crowdsec(flavor=flavor, environment=env, volumes=volumes) as cont:
-        wait_for_log(cont, "Starting processing data")
+        wait_for_log(cont, "*Starting processing data*")
         x = cont.exec_run('cscli lapi status')
         assert x.exit_code == 0
         stdout = x.output.decode()
@@ -166,9 +166,11 @@ def test_tls_split_lapi_agent(crowdsec, flavor, certs_dir):
     }
 
     with crowdsec(flavor=flavor, name=lapiname, environment=lapi_env, volumes=volumes) as lapi, crowdsec(flavor=flavor, name=agentname, environment=agent_env, volumes=volumes) as agent:
-        wait_for_log(lapi, "(tls) Client Auth Type set to VerifyClientCertIfGiven")
-        wait_for_log(lapi, "CrowdSec Local API listening on 0.0.0.0:8080")
-        wait_for_log(agent, "Starting processing data")
+        wait_for_log(lapi, [
+            "*(tls) Client Auth Type set to VerifyClientCertIfGiven*",
+            "*CrowdSec Local API listening on 0.0.0.0:8080*"
+        ])
+        wait_for_log(agent, "*Starting processing data*")
         res = agent.exec_run('cscli lapi status')
         assert res.exit_code == 0
         stdout = res.output.decode()
@@ -209,9 +211,11 @@ def test_tls_mutual_split_lapi_agent(crowdsec, flavor, certs_dir):
     }
 
     with crowdsec(flavor=flavor, name=lapiname, environment=lapi_env, volumes=volumes) as lapi, crowdsec(flavor=flavor, name=agentname, environment=agent_env, volumes=volumes) as agent:
-        wait_for_log(lapi, "(tls) Client Auth Type set to VerifyClientCertIfGiven")
-        wait_for_log(lapi, "CrowdSec Local API listening on 0.0.0.0:8080")
-        wait_for_log(agent, "Starting processing data")
+        wait_for_log(lapi, [
+            "*(tls) Client Auth Type set to VerifyClientCertIfGiven*",
+            "*CrowdSec Local API listening on 0.0.0.0:8080*"
+        ])
+        wait_for_log(agent, "*Starting processing data*")
         res = agent.exec_run('cscli lapi status')
         assert res.exit_code == 0
         stdout = res.output.decode()

@@ -28,7 +28,7 @@ def test_register_bouncer_env(crowdsec, flavor):
     }
 
     with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "Starting processing data")
+        wait_for_log(cont, "*Starting processing data*")
         res = cont.exec_run('cscli bouncers list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)

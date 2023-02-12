@@ -27,7 +27,7 @@ def test_docker_run(docker_client):
 
 
 def test_docker_run_detach(docker_client):
-    """Test if docker run works from the python SDK."""
+    """Test with python SDK (async)."""
     cont = docker_client.containers.run('hello-world', detach=True)
     assert cont.status == 'created'
     assert cont.attrs['State']['ExitCode'] == 0

@@ -21,7 +21,7 @@ def test_install_two_scenarios(crowdsec, flavor):
         'SCENARIOS': f'{it1} {it2}'
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "Starting processing data")
+        wait_for_log(cont, "*Starting processing data*")
         res = cont.exec_run('cscli scenarios list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
@@ -40,7 +40,7 @@ def test_disable_scenario(crowdsec, flavor):
         'DISABLE_SCENARIOS': it
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "Starting processing data")
+        wait_for_log(cont, "*Starting processing data*")
         res = cont.exec_run('cscli scenarios list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
@@ -58,7 +58,7 @@ def test_install_and_disable_scenario(crowdsec, flavor):
         'DISABLE_SCENARIOS': it,
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "Starting processing data")
+        wait_for_log(cont, "*Starting processing data*")
         res = cont.exec_run('cscli scenarios list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)

@@ -21,7 +21,7 @@ def test_install_two_collections(crowdsec, flavor):
         'COLLECTIONS': f'{it1} {it2}'
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "Starting processing data")
+        wait_for_log(cont, "*Starting processing data*")
         res = cont.exec_run('cscli collections list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
@@ -42,7 +42,7 @@ def test_disable_collection(crowdsec, flavor):
         'DISABLE_COLLECTIONS': it
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "Starting processing data")
+        wait_for_log(cont, "*Starting processing data*")
         res = cont.exec_run('cscli collections list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
@@ -61,7 +61,7 @@ def test_install_and_disable_collection(crowdsec, flavor):
         'DISABLE_COLLECTIONS': it,
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "Starting processing data")
+        wait_for_log(cont, "*Starting processing data*")
         res = cont.exec_run('cscli collections list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)

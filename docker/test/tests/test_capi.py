@@ -14,7 +14,7 @@ def test_no_capi(crowdsec, flavor):
     }
 
     with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "Starting processing data")
+        wait_for_log(cont, "*Starting processing data*")
         res = cont.exec_run('cscli capi status')
         assert res.exit_code == 1
         assert "You can successfully interact with Central API (CAPI)" not in res.output.decode()
@@ -32,11 +32,12 @@ def test_capi(crowdsec, flavor):
     }
 
     with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "Starting processing data")
+        wait_for_log(cont, "*Starting processing data*")
         res = cont.exec_run('cscli capi status')
         assert res.exit_code == 0
         assert "You can successfully interact with Central API (CAPI)" in res.output.decode()
 
-        logs = log_lines(cont)
-        assert any("Successfully registered to Central API (CAPI)" in line for line in logs)
-        assert any("Registration to online API done" in line for line in logs)
+        wait_for_log(cont, [
+            "*Successfully registered to Central API (CAPI)*",
+            "*Registration to online API done*",
+        ])
