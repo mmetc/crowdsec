@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from pytest_cs import wait_for_log
+from pytest_cs import wait_for_log, wait_for_http
 
 import pytest
 
@@ -11,6 +11,7 @@ def test_use_wal_default(crowdsec, flavor):
     """Test USE_WAL default"""
     with crowdsec(flavor=flavor) as cont:
         wait_for_log(cont, "*Starting processing data*")
+        wait_for_http(cont, 8080, '/health')
         res = cont.exec_run('cscli config show --key Config.DbConfig.UseWal -o json')
         assert res.exit_code == 0
         stdout = res.output.decode()
@@ -24,6 +25,7 @@ def test_use_wal_true(crowdsec, flavor):
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
         wait_for_log(cont, "*Starting processing data*")
+        wait_for_http(cont, 8080, '/health')
         res = cont.exec_run('cscli config show --key Config.DbConfig.UseWal -o json')
         assert res.exit_code == 0
         stdout = res.output.decode()
@@ -37,6 +39,7 @@ def test_use_wal_false(crowdsec, flavor):
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
         wait_for_log(cont, "*Starting processing data*")
+        wait_for_http(cont, 8080, '/health')
         res = cont.exec_run('cscli config show --key Config.DbConfig.UseWal -o json')
         assert res.exit_code == 0
         stdout = res.output.decode()

@@ -7,7 +7,7 @@ Test postoverflow management
 import json
 import pytest
 
-from pytest_cs import wait_for_log
+from pytest_cs import wait_for_log, wait_for_http
 
 pytestmark = pytest.mark.docker
 
@@ -21,6 +21,7 @@ def test_install_two_postoverflows(crowdsec, flavor):
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
         wait_for_log(cont, "*Starting processing data*")
+        wait_for_http(cont, 8080, '/health')
         res = cont.exec_run('cscli postoverflows list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
@@ -46,6 +47,7 @@ def test_install_and_disable_postoverflow(crowdsec, flavor):
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
         wait_for_log(cont, "*Starting processing data*")
+        wait_for_http(cont, 8080, '/health')
         res = cont.exec_run('cscli postoverflows list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)

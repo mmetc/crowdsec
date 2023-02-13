@@ -6,7 +6,7 @@ Test scenario management
 
 import json
 
-from pytest_cs import wait_for_log
+from pytest_cs import wait_for_log, wait_for_http
 
 import pytest
 
@@ -22,6 +22,7 @@ def test_install_two_scenarios(crowdsec, flavor):
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
         wait_for_log(cont, "*Starting processing data*")
+        wait_for_http(cont, 8080, '/health')
         res = cont.exec_run('cscli scenarios list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
@@ -41,6 +42,7 @@ def test_disable_scenario(crowdsec, flavor):
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
         wait_for_log(cont, "*Starting processing data*")
+        wait_for_http(cont, 8080, '/health')
         res = cont.exec_run('cscli scenarios list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
@@ -59,6 +61,7 @@ def test_install_and_disable_scenario(crowdsec, flavor):
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
         wait_for_log(cont, "*Starting processing data*")
+        wait_for_http(cont, 8080, '/health')
         res = cont.exec_run('cscli scenarios list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
