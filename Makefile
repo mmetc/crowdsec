@@ -94,6 +94,7 @@ clean: testclean
 	@$(RM) $(CSCLI_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) *.log $(WIN_IGNORE_ERR)
 	@$(RM) crowdsec-release.tgz $(WIN_IGNORE_ERR)
+	@$(RM) vendor.tgz $(WIN_IGNORE_ERR)
 	@$(foreach plugin,$(PLUGINS), \
 		$(MAKE) -C $(PLUGINS_DIR)/$(plugin) clean $(MAKE_FLAGS); \
 	)
@@ -137,13 +138,21 @@ localstack:
 localstack-stop:
 	docker-compose -f test/localstack/docker-compose.yml down
 
+# list of plugins that contain go.mod
+PLUGIN_VENDOR = $(foreach plugin,$(PLUGINS),$(shell if [ -f $(PLUGINS_DIR)/$(plugin)/go.mod ]; then echo $(PLUGINS_DIR)/$(plugin); fi))
+
 .PHONY: vendor
 vendor:
-	@echo "Vendoring dependencies"
-	@$(GOCMD) mod vendor
-	@$(foreach plugin,$(PLUGINS), \
-		$(MAKE) -C $(PLUGINS_DIR)/$(plugin) vendor $(MAKE_FLAGS); \
+	@echo "Recreating vendor directories and vendor.tgz."
+	$(RM) ./vendor
+	$(GOCMD) mod vendor
+	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
+		cd $(plugin_dir) >/dev/null && \
+		$(RM) ./vendor && \
+		$(GOCMD) mod vendor && \
+		cd - >/dev/null; \
 	)
+	tar -czf vendor.tgz vendor $(foreach plugin_dir,$(PLUGIN_VENDOR),$(plugin_dir)/vendor)
 
 .PHONY: package
 package:
