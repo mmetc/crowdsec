@@ -864,30 +864,59 @@ func (a *apic) GetMetrics() (*models.Metrics, error) {
 	return metric, nil
 }
 
+
 func (a *apic) SendMetrics(stop chan (bool)) {
 	defer trace.CatchPanic("lapi/metricsToAPIC")
 
-	ticker := time.NewTicker(a.metricsIntervalFirst)
+	var (
+		metrics *models.Metrics
+		err     error
+	)
 
-	log.Infof("Start send metrics to CrowdSec Central API (interval: %s once, then %s)", a.metricsIntervalFirst.Round(time.Second), a.metricsInterval)
+	pushIntervals := []time.Duration{1, a.metricsIntervalFirst, a.metricsInterval}
 
-	for {
-		metrics, err := a.GetMetrics()
+	log.Infof("Start send metrics to CrowdSec Central API (interval: %s once, then %s)", pushIntervals[1].Round(time.Second), pushIntervals[2])
+
+	count := -1
+	nextInterval := func() time.Duration {
+		if count < len(pushIntervals)-1 {
+			count++
+		}
+		return pushIntervals[count]
+	}
+
+	getMetrics := func() {
+		metrics, err = a.GetMetrics()
 		if err != nil {
 			log.Errorf("unable to get metrics (%s), will retry", err)
 		}
-		_, _, err = a.apiClient.Metrics.Add(context.Background(), metrics)
-		if err != nil {
-			log.Errorf("capi metrics: failed: %s", err)
-		} else {
-			log.Infof("capi metrics: metrics sent successfully")
-		}
+	}
 
+	getMetrics()
+
+	pushTicker := time.NewTicker(nextInterval())
+
+	collectTicker := time.NewTicker(10 * time.Second)
+
+	for {
 		select {
 		case <-stop:
 			return
-		case <-ticker.C:
-			ticker.Reset(a.metricsInterval)
+		case <-collectTicker.C:
+			nbrMachines := len(metrics.Machines)
+			getMetrics()
+			if nbrMachines != len(metrics.Machines) {
+				log.Debugf("capi metrics: nbr of machines changed from %d to %d", nbrMachines, len(metrics.Machines))
+				pushTicker.Reset(20 * time.Second)
+			}
+		case <-pushTicker.C:
+			_, _, err = a.apiClient.Metrics.Add(context.Background(), metrics)
+			if err != nil {
+				log.Errorf("capi metrics: failed: %s", err)
+			} else {
+				log.Infof("capi metrics: metrics sent successfully")
+			}
+			pushTicker.Reset(nextInterval())
 		case <-a.metricsTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.pullTomb.Kill(nil)
 			a.pushTomb.Kill(nil)
