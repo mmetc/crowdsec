@@ -5,7 +5,7 @@ go 1.20
 replace github.com/crowdsecurity/crowdsec => ../../../
 
 require (
-	github.com/crowdsecurity/crowdsec v1.5.2
+	github.com/crowdsecurity/crowdsec v1.5.3-rc3
 	github.com/hashicorp/go-hclog v1.5.0
 	github.com/hashicorp/go-plugin v1.4.10
 	gopkg.in/yaml.v2 v2.4.0
