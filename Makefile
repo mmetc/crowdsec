@@ -206,14 +206,15 @@ PLUGIN_VENDOR = $(foreach plugin,$(PLUGINS),$(shell if [ -f $(PLUGINS_DIR)/$(plu
 
 # build vendor.tgz to be distributed with the release
 .PHONY: vendor
-vendor:
+vendor: vendor-remove
 	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
 		cd $(plugin_dir) >/dev/null && \
 		$(GO) mod vendor && \
 		cd - >/dev/null; \
 	)
 	$(GO) mod vendor
-	tar -czf vendor.tgz vendor $(foreach plugin_dir,$(PLUGIN_VENDOR),$(plugin_dir)/vendor)
+	tar -c vendor $(foreach plugin_dir,$(PLUGIN_VENDOR),$(plugin_dir)/vendor) | gzip -9 > vendor.tgz
+	tar --create --auto-compress --file=$(RELDIR)-vendor.tar.xz vendor $(foreach plugin_dir,$(PLUGIN_VENDOR),$(plugin_dir)/vendor)
 
 .PHONY: tidy
 tidy:
@@ -230,7 +231,7 @@ vendor-remove:
 	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
 		$(RM) $(plugin_dir)/vendor; \
 	)
-	$(RM) vendor vendor.tgz
+	$(RM) vendor vendor.tgz *-vendor.tar.xz
 
 
 .PHONY: package
