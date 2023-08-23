@@ -118,7 +118,7 @@ func NewDefaultConfig() *Config {
 	dbConfig := DatabaseCfg{
 		Type:         "sqlite",
 		DbPath:       DefaultDataPath("crowdsec.db"),
-		MaxOpenConns: ptr.Of(DEFAULT_MAX_OPEN_CONNS),
+		MaxOpenConns: DefaultMaxOpenConns,
 	}
 
 	globalCfg := Config{

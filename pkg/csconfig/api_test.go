@@ -194,7 +194,7 @@ func TestLoadAPIServer(t *testing.T) {
 				DbConfig: &DatabaseCfg{
 					DbPath:       "./tests/test.db",
 					Type:         "sqlite",
-					MaxOpenConns: ptr.Of(DEFAULT_MAX_OPEN_CONNS),
+					MaxOpenConns: DefaultMaxOpenConns,
 				},
 				ConsoleConfigPath: DefaultConfigPath("console.yaml"),
 				ConsoleConfig: &ConsoleConfig{

@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 func TestLoadDBConfig(t *testing.T) {
@@ -23,7 +21,7 @@ func TestLoadDBConfig(t *testing.T) {
 				DbConfig: &DatabaseCfg{
 					Type:         "sqlite",
 					DbPath:       "./tests/test.db",
-					MaxOpenConns: ptr.Of(10),
+					MaxOpenConns: 10,
 				},
 				Cscli: &CscliCfg{},
 				API: &APICfg{
@@ -33,7 +31,7 @@ func TestLoadDBConfig(t *testing.T) {
 			expectedResult: &DatabaseCfg{
 				Type:         "sqlite",
 				DbPath:       "./tests/test.db",
-				MaxOpenConns: ptr.Of(10),
+				MaxOpenConns: 10,
 			},
 		},
 		{
