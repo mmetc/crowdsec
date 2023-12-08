@@ -3,7 +3,7 @@ version: "3.8"
 services:
   localstack:
     container_name: localstack_main
-    image: localstack/localstack:1.3.0
+    image: localstack/localstack:3.0
     network_mode: bridge
     ports:
       - "127.0.0.1:53:53"                # only required for Pro (DNS)
@@ -28,7 +28,7 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
 
   zoo1:
-    image: confluentinc/cp-zookeeper:7.3.0
+    image: confluentinc/cp-zookeeper:7.4.3
     ports:
       - "2181:2181"
     environment:
@@ -79,6 +79,6 @@ services:
       timeout: 10s
 
   loki:
-    image: grafana/loki:2.8.0
+    image: grafana/loki:2.9.1
     ports:
       - "3100:3100"
