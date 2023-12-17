@@ -14,11 +14,9 @@ services:
     environment:
       AWS_HOST: localstack
       DEBUG: ""
-      LAMBDA_EXECUTOR: ""
       KINESYS_ERROR_PROBABILITY: ""
       DOCKER_HOST: "unix://var/run/docker.sock"
-      KINESIS_INITIALIZE_STREAMS: "stream-1-shard:1,stream-2-shards:2"
-      HOSTNAME_EXTERNAL: "localstack"
+      LOCALSTACK_HOST: "localstack"
       AWS_ACCESS_KEY_ID: "AKIAIOSFODNN7EXAMPLE"
       AWS_SECRET_ACCESS_KEY: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
       AWS_REGION: "us-east-1"
@@ -26,6 +24,7 @@ services:
     volumes:
       - "${TMPDIR:-/tmp}/localstack:/var/lib/localstack"
       - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./scripts/init_script.sh:/etc/localstack/init/ready.d/init_script.sh"
 
   zoo1:
     image: confluentinc/cp-zookeeper:7.4.3
