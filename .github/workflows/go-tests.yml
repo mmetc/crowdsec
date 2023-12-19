@@ -53,7 +53,7 @@ jobs:
           --health-timeout=5s
           --health-retries=3
         volumes:
-          - ./test/locakstack/scripts/init_script.sh:/etc/locakstack/init/ready.d/init_script.sh
+          - ./test/localstack/scripts/init_script.sh:/etc/locakstack/init/ready.d/init_script.sh
       zoo1:
         image: confluentinc/cp-zookeeper:7.4.3
         ports:
