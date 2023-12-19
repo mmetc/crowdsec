@@ -52,8 +52,6 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=3
-        volumes:
-          - ./test/localstack/scripts/init_script.sh:/etc/locakstack/init/ready.d/init_script.sh
       zoo1:
         image: confluentinc/cp-zookeeper:7.4.3
         ports:
@@ -129,6 +127,11 @@ jobs:
       uses: actions/setup-go@v4
       with:
         go-version: "1.21.5"
+
+    - name: Create localstack streams
+      run: |
+          aws --endpoint-url=http://localstack:4566 --region us-east-1 kinesis create-stream --stream-name stream-1-shard --shard-count 1
+          aws --endpoint-url=http://localstack:4566 --region us-east-1 kinesis create-stream --stream-name stream-2-shards --shard-count 2
 
     - name: Build and run tests, static
       run: |
