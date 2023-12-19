@@ -24,10 +24,9 @@ env:
   RICHGO_FORCE_COLOR: 1
   AWS_HOST: localstack
   # these are to mimic aws config
-  AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
-  AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
   AWS_REGION: us-east-1
-  KINESIS_INITIALIZE_STREAMS: "stream-1-shard:1,stream-2-shards:2"
   CROWDSEC_FEATURE_DISABLE_HTTP_RETRY_BACKOFF: true
 
 jobs:
@@ -45,7 +44,7 @@ jobs:
           KINESIS_ERROR_PROBABILITY: ""
           DOCKER_HOST: unix:///var/run/docker.sock
           KINESIS_INITIALIZE_STREAMS: ${{ env.KINESIS_INITIALIZE_STREAMS }}
-          HOSTNAME_EXTERNAL: ${{ env.AWS_HOST }}  # Required so that resource urls are provided properly
+          LOCALSTACK_HOST: ${{ env.AWS_HOST }}  # Required so that resource urls are provided properly
           # e.g sqs url will get localhost if we don't set this env to map our service
         options: >-
           --name=localstack
@@ -53,6 +52,8 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=3
+        volumes:
+          - ./test/locakstack/scripts/init_script.sh:/etc/locakstack/init/ready.d/init_script.sh
       zoo1:
         image: confluentinc/cp-zookeeper:7.4.3
         ports:
@@ -110,7 +111,7 @@ jobs:
           - "3100:3100"
         options: >-
           --name=loki1
-          --health-cmd "wget -q -O -  http://localhost:3100/ready | grep 'ready'"
+          --health-cmd "wget -q -O - http://localhost:3100/ready | grep 'ready'"
           --health-interval 30s
           --health-timeout 10s
           --health-retries 5
