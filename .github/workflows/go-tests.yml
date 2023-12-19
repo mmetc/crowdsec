@@ -130,8 +130,8 @@ jobs:
 
     - name: Create localstack streams
       run: |
-          aws --endpoint-url=http://localstack:4566 --region us-east-1 kinesis create-stream --stream-name stream-1-shard --shard-count 1
-          aws --endpoint-url=http://localstack:4566 --region us-east-1 kinesis create-stream --stream-name stream-2-shards --shard-count 2
+          aws --endpoint-url=http://127.0.0.1:4566 --region us-east-1 kinesis create-stream --stream-name stream-1-shard --shard-count 1
+          aws --endpoint-url=http://127.0.0.1:4566 --region us-east-1 kinesis create-stream --stream-name stream-2-shards --shard-count 2
 
     - name: Build and run tests, static
       run: |
