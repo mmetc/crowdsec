@@ -18,6 +18,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Cache vendor directory
+        uses: actions/cache@v2
+        with:
+          path: vendor
+          key: vendor-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            vendor-
+
       - name: "Vendor modules"
         run: |
           go mod vendor

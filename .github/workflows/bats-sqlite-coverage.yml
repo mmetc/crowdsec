@@ -35,6 +35,18 @@ jobs:
       with:
         go-version: ${{ matrix.go-version }}
 
+    - name: Cache vendor directory
+      uses: actions/cache@v2
+      with:
+        path: vendor
+        key: vendor-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          vendor-
+
+    - name: "Vendor modules"
+      run: |
+        go mod vendor
+
     - name: "Install bats dependencies"
       env:
         GOBIN: /usr/local/bin
