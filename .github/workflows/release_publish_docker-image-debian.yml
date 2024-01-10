@@ -12,10 +12,16 @@ jobs:
     name: Push Docker debian image to Docker Hub
     runs-on: ubuntu-latest
     steps:
+
       - name: Check out the repo
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+
+      - name: "Vendor modules"
+        run: |
+          go mod vendor
+
       - name: Prepare
         id: prep
         run: |

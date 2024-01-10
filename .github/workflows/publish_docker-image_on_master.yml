@@ -26,6 +26,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: "Vendor modules"
+        run: |
+          go mod vendor
+
       - name: Prepare
         id: prep
         run: |
