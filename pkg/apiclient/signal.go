@@ -28,9 +28,9 @@ func (s *SignalService) Add(ctx context.Context, signals *models.AddSignalsReque
 	}
 
 	if resp.Response.StatusCode != http.StatusOK {
-		log.Warnf("Signal push response : http %s", resp.Response.Status)
+		log.Warnf("Signal push response: http %s", resp.Response.Status)
 	} else {
-		log.Debugf("Signal push response : http %s", resp.Response.Status)
+		log.Debugf("Signal push response: http %s", resp.Response.Status)
 	}
 
 	return &response, resp, nil

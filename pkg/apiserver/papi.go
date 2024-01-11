@@ -21,21 +21,15 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var (
-	SyncInterval = time.Second * 10
-)
+var SyncInterval = time.Second * 10
 
-const (
-	PapiPullKey = "papi:last_pull"
-)
+const PapiPullKey = "papi:last_pull"
 
-var (
-	operationMap = map[string]func(*Message, *Papi, bool) error{
-		"decision":   DecisionCmd,
-		"alert":      AlertCmd,
-		"management": ManagementCmd,
-	}
-)
+var operationMap = map[string]func(*Message, *Papi, bool) error{
+	"decision":   DecisionCmd,
+	"alert":      AlertCmd,
+	"management": ManagementCmd,
+}
 
 type Header struct {
 	OperationType string    `json:"operation_type"`

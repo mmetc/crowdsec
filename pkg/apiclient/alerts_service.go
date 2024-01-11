@@ -10,8 +10,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-// type ApiAlerts service
-
 type AlertsService service
 
 type AlertsListOpts struct {
@@ -89,6 +87,7 @@ func (s *AlertsService) List(ctx context.Context, opts AlertsListOpts) (*models.
 
 	resp, err := s.client.Do(ctx, req, &alerts)
 	if err != nil {
+		// XXX: consistent error handling?
 		return nil, resp, fmt.Errorf("performing request: %w", err)
 	}
 
@@ -149,6 +148,7 @@ func (s *AlertsService) GetByID(ctx context.Context, alertID int) (*models.Alert
 
 	resp, err := s.client.Do(ctx, req, &alert)
 	if err != nil {
+		// XXX: consistent error handling?
 		return nil, nil, err
 	}
 
