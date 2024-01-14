@@ -32,6 +32,7 @@ const keyLength = 32
 
 type APIServer struct {
 	URL            string
+	isUnixSocket   bool
 	TLS            *csconfig.TLSCfg
 	dbClient       *database.Client
 	logFile        string
@@ -267,6 +268,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	return &APIServer{
 		URL:            config.ListenURI,
+		isUnixSocket:	config.IsUnixSocket(),
 		TLS:            config.TLS,
 		logFile:        logFile,
 		dbClient:       dbClient,
@@ -362,16 +364,31 @@ func (s *APIServer) Run(apiReady chan bool) error {
 // it also updates the URL field with the actual address the server is listening on
 // it's meant to be run in a separate goroutine
 func (s *APIServer) listenAndServeURL(apiReady chan bool) {
+	var (
+		err      error
+		listener net.Listener
+	)
+
 	serverError := make(chan error, 1)
 
 	go func() {
-		listener, err := net.Listen("tcp", s.URL)
-		if err != nil {
-			serverError <- fmt.Errorf("listening on %s: %w", s.URL, err)
-			return
+		if s.isUnixSocket {
+			_ = os.RemoveAll(s.URL)
+			listener, err = net.Listen("unix", s.URL)
+			if err != nil {
+				log.Fatalf("while creating unix listener: %v", err)
+			}
+		} else {
+			listener, err = net.Listen("tcp", s.URL)
+			if err != nil {
+				serverError <- fmt.Errorf("listening on %s: %w", s.URL, err)
+				return
+			}
+
+			// read back URL to get the actual port if we listen on ":0"
+			s.URL = listener.Addr().String()
 		}
 
-		s.URL = listener.Addr().String()
 		log.Infof("CrowdSec Local API listening on %s", s.URL)
 		apiReady <- true
 

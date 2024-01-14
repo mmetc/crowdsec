@@ -176,9 +176,9 @@ func (l *LocalApiClientCfg) Load() error {
 	return nil
 }
 
-func (lapiCfg *LocalApiServerCfg) GetTrustedIPs() ([]net.IPNet, error) {
+func (c *LocalApiServerCfg) GetTrustedIPs() ([]net.IPNet, error) {
 	trustedIPs := make([]net.IPNet, 0)
-	for _, ip := range lapiCfg.TrustedIPs {
+	for _, ip := range c.TrustedIPs {
 		cidr := toValidCIDR(ip)
 
 		_, ipNet, err := net.ParseCIDR(cidr)
@@ -234,6 +234,17 @@ type LocalApiServerCfg struct {
 	DisableRemoteLapiRegistration bool                `yaml:"disable_remote_lapi_registration,omitempty"`
 	CapiWhitelistsPath            string              `yaml:"capi_whitelists_path,omitempty"`
 	CapiWhitelists                *CapiWhitelist      `yaml:"-"`
+}
+
+func (c *LocalApiServerCfg) IsUnixSocket() bool {
+	return strings.HasPrefix(c.ListenURI, "/")
+}
+
+func (c *LocalApiServerCfg) ClientUrl() string {
+	if c.IsUnixSocket() {
+		return c.ListenURI
+	}
+	return fmt.Sprintf("http://%s", c.ListenURI)
 }
 
 func (c *Config) LoadAPIServer() error {
@@ -381,21 +392,21 @@ func parseCapiWhitelists(fd io.Reader) (*CapiWhitelist, error) {
 	return ret, nil
 }
 
-func (s *LocalApiServerCfg) LoadCapiWhitelists() error {
-	if s.CapiWhitelistsPath == "" {
+func (c *LocalApiServerCfg) LoadCapiWhitelists() error {
+	if c.CapiWhitelistsPath == "" {
 		return nil
 	}
 
-	fd, err := os.Open(s.CapiWhitelistsPath)
+	fd, err := os.Open(c.CapiWhitelistsPath)
 	if err != nil {
 		return fmt.Errorf("while opening capi whitelist file: %s", err)
 	}
 
 	defer fd.Close()
 
-	s.CapiWhitelists, err = parseCapiWhitelists(fd)
+	c.CapiWhitelists, err = parseCapiWhitelists(fd)
 	if err != nil {
-		return fmt.Errorf("while parsing capi whitelist file '%s': %w", s.CapiWhitelistsPath, err)
+		return fmt.Errorf("while parsing capi whitelist file '%s': %w", c.CapiWhitelistsPath, err)
 	}
 
 	return nil
