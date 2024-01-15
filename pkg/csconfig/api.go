@@ -130,6 +130,7 @@ func (l *LocalApiClientCfg) Load() error {
 	}
 
 	if l.Credentials != nil && l.Credentials.URL != "" {
+		// XXX:
 		if !strings.HasSuffix(l.Credentials.URL, "/") {
 			l.Credentials.URL += "/"
 		}
@@ -213,6 +214,7 @@ type CapiWhitelist struct {
 type LocalApiServerCfg struct {
 	Enable                        *bool               `yaml:"enable"`
 	ListenURI                     string              `yaml:"listen_uri,omitempty"` // 127.0.0.1:8080
+	ListenSocket                  string              `yaml:"listen_socket,omitempty"`
 	TLS                           *TLSCfg             `yaml:"tls"`
 	DbConfig                      *DatabaseCfg        `yaml:"-"`
 	LogDir                        string              `yaml:"-"`
@@ -236,13 +238,9 @@ type LocalApiServerCfg struct {
 	CapiWhitelists                *CapiWhitelist      `yaml:"-"`
 }
 
-func (c *LocalApiServerCfg) IsUnixSocket() bool {
-	return strings.HasPrefix(c.ListenURI, "/")
-}
-
 func (c *LocalApiServerCfg) ClientUrl() string {
-	if c.IsUnixSocket() {
-		return c.ListenURI
+	if c.ListenSocket != "" {
+		return c.ListenSocket
 	}
 	return fmt.Sprintf("http://%s", c.ListenURI)
 }
@@ -272,8 +270,8 @@ func (c *Config) LoadAPIServer() error {
 		return nil
 	}
 
-	if c.API.Server.ListenURI == "" {
-		return fmt.Errorf("no listen_uri specified")
+	if c.API.Server.ListenURI == "" && c.API.Server.ListenSocket == "" {
+		return fmt.Errorf("no listen_uri or listen_socket specified")
 	}
 
 	//inherit log level from common, then api->server

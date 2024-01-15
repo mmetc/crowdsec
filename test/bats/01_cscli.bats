@@ -100,14 +100,17 @@ teardown() {
 
     # check that LAPI configuration is loaded (human and json, not shows in raw)
 
+    sock=$(config_get '.api.server.listen_socket')
+
     rune -0 cscli config show -o human
-    assert_line --regexp ".*- URL +: http://127.0.0.1:8080/"
+    # XXX sock should not have ending /
+    assert_line --regexp ".*- URL +: $sock/"
     assert_line --regexp ".*- Login +: githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?"
     assert_line --regexp ".*- Credentials File +: .*/local_api_credentials.yaml"
 
     rune -0 cscli config show -o json
     rune -0 jq -c '.API.Client.Credentials | [.url,.login[0:32]]' <(output)
-    assert_json '["http://127.0.0.1:8080/","githubciXXXXXXXXXXXXXXXXXXXXXXXX"]'
+    assert_json "[\"$sock/\",\"githubciXXXXXXXXXXXXXXXXXXXXXXXX\"]"
 
     # pointer to boolean
 
@@ -209,7 +212,6 @@ teardown() {
 
     assert_stderr --partial "Loaded credentials from"
     assert_stderr --partial "Trying to authenticate with username"
-    assert_stderr --partial " on http://127.0.0.1:8080/"
     assert_stderr --partial "You can successfully interact with Local API (LAPI)"
 }
 

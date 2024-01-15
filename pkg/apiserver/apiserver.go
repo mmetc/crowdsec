@@ -32,7 +32,7 @@ const keyLength = 32
 
 type APIServer struct {
 	URL            string
-	isUnixSocket   bool
+	UnixSocket     string
 	TLS            *csconfig.TLSCfg
 	dbClient       *database.Client
 	logFile        string
@@ -268,7 +268,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	return &APIServer{
 		URL:            config.ListenURI,
-		isUnixSocket:	config.IsUnixSocket(),
+		UnixSocket:     config.ListenSocket,
 		TLS:            config.TLS,
 		logFile:        logFile,
 		dbClient:       dbClient,
@@ -372,9 +372,9 @@ func (s *APIServer) listenAndServeURL(apiReady chan bool) {
 	serverError := make(chan error, 1)
 
 	go func() {
-		if s.isUnixSocket {
-			_ = os.RemoveAll(s.URL)
-			listener, err = net.Listen("unix", s.URL)
+		if s.UnixSocket != "" {
+			_ = os.RemoveAll(s.UnixSocket)
+			listener, err = net.Listen("unix", s.UnixSocket)
 			if err != nil {
 				log.Fatalf("while creating unix listener: %v", err)
 			}

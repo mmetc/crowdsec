@@ -57,8 +57,6 @@ config_generate() {
 
     cp ../config/profiles.yaml \
        ../config/simulation.yaml \
-       ../config/local_api_credentials.yaml \
-       ../config/online_api_credentials.yaml \
        "${CONFIG_DIR}/"
 
     cp ../config/detect.yaml \
@@ -95,6 +93,7 @@ config_generate() {
     .db_config.db_path=strenv(DATA_DIR)+"/crowdsec.db" |
     .db_config.use_wal=true |
     .api.client.credentials_path=strenv(CONFIG_DIR)+"/local_api_credentials.yaml" |
+    .api.server.listen_socket=strenv(DATA_DIR)+"/crowdsec.sock" |
     .api.server.profiles_path=strenv(CONFIG_DIR)+"/profiles.yaml" |
     .api.server.console_path=strenv(CONFIG_DIR)+"/console.yaml" |
     del(.api.server.online_client)
