@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -25,10 +26,24 @@ func getBouncerFromContext(ctx *gin.Context) (*ent.Bouncer, error) {
 	return bouncerInfo, nil
 }
 
+func isUnixSocket(c *gin.Context) bool {
+    if tcpConn, ok := c.Request.Context().Value(http.LocalAddrContextKey).(net.Conn); ok {
+        _, ok := tcpConn.LocalAddr().(*net.UnixAddr)
+        return ok
+    }
+    return false
+}
+
 func (c *Controller) AbortRemoteIf(option bool) gin.HandlerFunc {
 	return func(gctx *gin.Context) {
+		if !option {
+			return
+		}
+		if isUnixSocket(gctx) {
+			return
+		}
 		incomingIP := gctx.ClientIP()
-		if option && incomingIP != "127.0.0.1" && incomingIP != "::1" {
+		if incomingIP != "127.0.0.1" && incomingIP != "::1" {
 			gctx.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 			gctx.Abort()
 		}

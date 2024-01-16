@@ -40,7 +40,7 @@ teardown() {
 @test "lapi (bad .api.server.listen_uri)" {
     rune -0 config_set 'del(.api.server.listen_socket) | .api.server.listen_uri="127.0.0.1:-80"'
     rune -1 "${CROWDSEC}" -no-cs
-    assert_stderr --partial "while starting API server: listening on 127.0.0.1:-80: listen tcp: address -80: invalid port"
+    assert_stderr --partial "local API server stopped with error: listening on 127.0.0.1:-80: listen tcp: address -80: invalid port"
 }
 
 @test "lapi (listen on random port)" {

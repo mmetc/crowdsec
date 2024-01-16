@@ -8,11 +8,9 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"runtime/debug"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v4"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -67,7 +65,6 @@ type service struct {
 }
 
 func NewClient(config *Config) (*ApiClient, error) {
-	log.WithField("stack", string(debug.Stack())).Warningf("Creating new API client for %s", config.URL)
 	t := &JWTTransport{
 		MachineID:      &config.MachineID,
 		Password:       &config.Password,

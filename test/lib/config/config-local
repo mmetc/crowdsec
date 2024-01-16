@@ -57,6 +57,7 @@ config_generate() {
 
     cp ../config/profiles.yaml \
        ../config/simulation.yaml \
+       ../config/online_api_credentials.yaml \
        "${CONFIG_DIR}/"
 
     cp ../config/detect.yaml \
@@ -118,7 +119,8 @@ make_init_data() {
 
     ./bin/preload-hub-items
 
-    "$CSCLI" --warning machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto --force
+    # force TCP, the default would be unix socket
+    "$CSCLI" --warning machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --url http://127.0.0.1:8080 --auto --force
 
     mkdir -p "$LOCAL_INIT_DIR"
 
