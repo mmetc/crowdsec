@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -27,11 +28,11 @@ func getBouncerFromContext(ctx *gin.Context) (*ent.Bouncer, error) {
 }
 
 func isUnixSocket(c *gin.Context) bool {
-    if tcpConn, ok := c.Request.Context().Value(http.LocalAddrContextKey).(net.Conn); ok {
-        _, ok := tcpConn.LocalAddr().(*net.UnixAddr)
-        return ok
-    }
-    return false
+	if localAddr, ok := c.Request.Context().Value(http.LocalAddrContextKey).(net.Addr); ok {
+		return strings.HasPrefix(localAddr.Network(), "unix")
+	}
+
+	return false
 }
 
 func (c *Controller) AbortRemoteIf(option bool) gin.HandlerFunc {
