@@ -136,7 +136,11 @@ func (l *LocalApiClientCfg) Load() error {
 		}
 	}
 
-	credTLS := l.Credentials.CertPath != "" || l.Credentials.KeyPath != "" || l.Credentials.CACertPath != ""
+	// is the configuration asking for client authentication via TLS?
+	credTLSClientAuth := l.Credentials.CertPath != "" || l.Credentials.KeyPath != ""
+
+	// is the configuration asking for TLS encryption and server authentication?
+	credTLS := credTLSClientAuth || l.Credentials.CACertPath != ""
 
 	// XXX: should support "unix://"
 	credSocket := strings.HasPrefix(l.Credentials.URL, "/")
@@ -145,7 +149,7 @@ func (l *LocalApiClientCfg) Load() error {
 		return fmt.Errorf("cannot use TLS with a unix socket")
 	}
 
-	if credTLS && l.Credentials.Login != "" {
+	if credTLSClientAuth && l.Credentials.Login != "" {
 		return fmt.Errorf("user/password authentication and TLS authentication are mutually exclusive")
 	}
 
