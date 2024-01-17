@@ -130,13 +130,22 @@ func (l *LocalApiClientCfg) Load() error {
 	}
 
 	if l.Credentials != nil && l.Credentials.URL != "" {
-		// XXX:
+		// XXX: socket should not have a trailing slash
 		if !strings.HasSuffix(l.Credentials.URL, "/") {
 			l.Credentials.URL += "/"
 		}
 	}
 
-	if l.Credentials.Login != "" && (l.Credentials.CertPath != "" || l.Credentials.KeyPath != "") {
+	credTLS := l.Credentials.CertPath != "" || l.Credentials.KeyPath != "" || l.Credentials.CACertPath != ""
+
+	// XXX: should support "unix://"
+	credSocket := strings.HasPrefix(l.Credentials.URL, "/")
+
+	if credTLS && credSocket {
+		return fmt.Errorf("cannot use TLS with a unix socket")
+	}
+
+	if credTLS && l.Credentials.Login != "" {
 		return fmt.Errorf("user/password authentication and TLS authentication are mutually exclusive")
 	}
 

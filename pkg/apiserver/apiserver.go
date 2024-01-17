@@ -376,8 +376,8 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 		listenerClosed = make(chan struct{})
 	)
 
-	startServer := func(listener net.Listener) {
-		if s.TLS != nil && (s.TLS.CertFilePath != "" || s.TLS.KeyFilePath != "") {
+	startServer := func(listener net.Listener, canTLS bool) {
+		if canTLS && s.TLS != nil && (s.TLS.CertFilePath != "" || s.TLS.KeyFilePath != "") {
 			if s.TLS.KeyFilePath == "" {
 				serverError <- errors.New("missing TLS key file")
 				return
@@ -394,7 +394,7 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 		}
 
 		if err != nil && err != http.ErrServerClosed {
-			serverError <- fmt.Errorf("while serving local API: %v", err)
+			serverError <- err
 		}
 	}
 
@@ -410,7 +410,7 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 			return
 		}
 		log.Infof("CrowdSec Local API listening on %s", s.URL)
-		startServer(tcpListener)
+		startServer(tcpListener, true)
 	}()
 
 	// Starting Unix socket listener
@@ -426,7 +426,7 @@ func (s *APIServer) listenAndServeLAPI(apiReady chan bool) error {
 			return
 		}
 		log.Infof("CrowdSec Local API listening on Unix socket %s", s.UnixSocket)
-		startServer(unixListener)
+		startServer(unixListener, false)
 	}()
 
 	apiReady <- true

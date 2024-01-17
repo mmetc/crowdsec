@@ -22,7 +22,6 @@ def test_missing_key_file(crowdsec, flavor):
     }
 
     with crowdsec(flavor=flavor, environment=env, wait_status=Status.EXITED) as cs:
-        # XXX: this message appears twice, is that normal?
         cs.wait_for_log("*local API server stopped with error: missing TLS key file*")
 
 
