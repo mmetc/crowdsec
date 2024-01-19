@@ -81,11 +81,12 @@ func randomDuration(d time.Duration, delta time.Duration) time.Duration {
 
 func (a *apic) FetchScenariosListFromDB() ([]string, error) {
 	scenarios := make([]string, 0)
-	machines, err := a.dbClient.ListMachines()
 
+	machines, err := a.dbClient.ListMachines()
 	if err != nil {
 		return nil, fmt.Errorf("while listing machines: %w", err)
 	}
+
 	//merge all scenarios together
 	for _, v := range machines {
 		machineScenarios := strings.Split(v.Scenarios, ",")
@@ -156,6 +157,7 @@ func alertToSignal(alert *models.Alert, scenarioTrust string, shareContext bool)
 		Decisions:     decisionsToApiDecisions(alert.Decisions),
 		UUID:          alert.UUID,
 	}
+
 	if shareContext {
 		signal.Context = make([]*models.AddSignalsRequestItemContextItems0, 0)
 
@@ -172,8 +174,6 @@ func alertToSignal(alert *models.Alert, scenarioTrust string, shareContext bool)
 }
 
 func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig, apicWhitelist *csconfig.CapiWhitelist) (*apic, error) {
-	var err error
-
 	ret := &apic{
 		AlertsAddChan:        make(chan []*models.Alert),
 		dbClient:             dbClient,
@@ -452,7 +452,7 @@ func (a *apic) HandleDeletedDecisions(deletedDecisions []*models.Decision, delet
 }
 
 func (a *apic) HandleDeletedDecisionsV3(deletedDecisions []*modelscapi.GetDecisionsStreamResponseDeletedItem, deleteCounters map[string]map[string]int) (int, error) {
-	var nbDeleted int
+	nbDeleted := 0
 
 	for _, decisions := range deletedDecisions {
 		scope := decisions.Scope
@@ -539,7 +539,6 @@ func createAlertForDecision(decision *models.Decision) *models.Alert {
 		scenario = *decision.Scenario
 		scope = types.ListOrigin
 	default:
-		// XXX: this or nil?
 		scenario = ""
 		scope = ""
 
@@ -612,8 +611,6 @@ func fillAlertsWithDecisions(alerts []*models.Alert, decisions []*models.Decisio
 // one alert for "community blocklist"
 // one alert per list we're subscribed to
 func (a *apic) PullTop(forcePull bool) error {
-	var err error
-
 	//A mutex with TryLock would be a bit simpler
 	//But go does not guarantee that TryLock will be able to acquire the lock even if it is available
 	select {
@@ -897,12 +894,19 @@ func (a *apic) UpdateBlocklists(links *modelscapi.GetDecisionsStreamResponseLink
 }
 
 func setAlertScenario(alert *models.Alert, addCounters map[string]map[string]int, deleteCounters map[string]map[string]int) {
-	if *alert.Source.Scope == types.CAPIOrigin {
+	switch *alert.Source.Scope {
+	case types.CAPIOrigin:
 		*alert.Source.Scope = types.CommunityBlocklistPullSourceScope
-		alert.Scenario = ptr.Of(fmt.Sprintf("update : +%d/-%d IPs", addCounters[types.CAPIOrigin]["all"], deleteCounters[types.CAPIOrigin]["all"]))
-	} else if *alert.Source.Scope == types.ListOrigin {
+		alert.Scenario = ptr.Of(fmt.Sprintf("update : +%d/-%d IPs",
+			addCounters[types.CAPIOrigin]["all"],
+			deleteCounters[types.CAPIOrigin]["all"]),
+		)
+	case types.ListOrigin:
 		*alert.Source.Scope = fmt.Sprintf("%s:%s", types.ListOrigin, *alert.Scenario)
-		alert.Scenario = ptr.Of(fmt.Sprintf("update : +%d/-%d IPs", addCounters[types.ListOrigin][*alert.Scenario], deleteCounters[types.ListOrigin][*alert.Scenario]))
+		alert.Scenario = ptr.Of(fmt.Sprintf("update : +%d/-%d IPs",
+			addCounters[types.ListOrigin][*alert.Scenario],
+			deleteCounters[types.ListOrigin][*alert.Scenario]),
+		)
 	}
 }
 
@@ -974,11 +978,12 @@ func makeAddAndDeleteCounters() (map[string]map[string]int, map[string]map[strin
 }
 
 func updateCounterForDecision(counter map[string]map[string]int, origin *string, scenario *string, totalDecisions int) {
-	if *origin == types.CAPIOrigin {
+	switch *origin {
+	case types.CAPIOrigin:
 		counter[*origin]["all"] += totalDecisions
-	} else if *origin == types.ListOrigin {
+	case types.ListOrigin:
 		counter[*origin][*scenario] += totalDecisions
-	} else {
+	default:
 		log.Warningf("Unknown origin %s", *origin)
 	}
 }
