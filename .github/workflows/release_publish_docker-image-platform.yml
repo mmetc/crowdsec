@@ -7,8 +7,6 @@ on:
         required: true
       DOCKER_PASSWORD:
         required: true
-      GITHUB_TOKEN:
-        required: true
     inputs:
       platform:
         required: true
