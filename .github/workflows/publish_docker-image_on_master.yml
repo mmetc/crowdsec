@@ -18,7 +18,7 @@ on:
 
 jobs:
   dev-alpine:
-    uses: ./.github/workflows/release_publish_docker-image-platform.yml
+    uses: ./.github/workflows/publish-docker.yml
     with:
       platform: linux/amd64
       build_version: dev
@@ -33,7 +33,7 @@ jobs:
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
   dev-debian:
-    uses: ./.github/workflows/release_publish_docker-image-platform.yml
+    uses: ./.github/workflows/publish-docker.yml
     with:
       platform: linux/amd64
       build_version: dev
