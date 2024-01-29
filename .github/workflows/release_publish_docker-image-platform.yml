@@ -2,6 +2,13 @@ name: Publish Docker image / platform
 
 on:
   workflow_call:
+    secrets:
+      DOCKER_USERNAME:
+        required: true
+      DOCKER_PASSWORD:
+        required: true
+      GITHUB_TOKEN:
+        required: true
     inputs:
       platform:
         required: true
