@@ -1,8 +1,8 @@
 # vim: set ft=dockerfile:
+FROM golang:${GOVERSION}-bookworm AS build
+
 ARG GOVERSION=1.21.6
 ARG BUILD_VERSION
-
-FROM golang:${GOVERSION}-bookworm AS build
 
 WORKDIR /go/src/crowdsec
 
@@ -26,7 +26,7 @@ RUN apt-get update && \
 
 COPY . .
 
-RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=1 BUILD_VERSION=${BUILD_VERSION} && \
+RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=1 && \
     cd crowdsec-v* && \
     ./wizard.sh --docker-mode && \
     cd - >/dev/null && \

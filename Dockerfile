@@ -1,8 +1,8 @@
 # vim: set ft=dockerfile:
+FROM golang:${GOVERSION}-alpine3.18 AS build
+
 ARG GOVERSION=1.21.6
 ARG BUILD_VERSION
-
-FROM golang:${GOVERSION}-alpine3.18 AS build
 
 WORKDIR /go/src/crowdsec
 
@@ -21,7 +21,7 @@ RUN apk add --no-cache git g++ gcc libc-dev make bash gettext binutils-gold core
 
 COPY . .
 
-RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=1 BUILD_VERSION=${BUILD_VERSION} && \
+RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=1 && \
     cd crowdsec-v* && \
     ./wizard.sh --docker-mode && \
     cd - >/dev/null && \
