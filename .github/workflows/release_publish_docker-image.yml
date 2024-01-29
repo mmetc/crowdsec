@@ -25,5 +25,5 @@ jobs:
     with:
       platform: $ {{ matrix.platform }}
       build_version: ${{ github.event.inputs.build_version }}
-      latest: ${{ github.event.inputs.latest }}
-      push: ${{ github.event.inputs.push }}
+      latest: ${{ github.event.inputs.latest == "true" }}
+      push: ${{ github.event.inputs.push == "true" }}
