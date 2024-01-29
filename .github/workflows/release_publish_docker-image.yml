@@ -27,3 +27,6 @@ jobs:
       build_version: ${{ github.event.inputs.build_version }}
       latest: ${{ github.event.inputs.latest == 'true' }}
       push: ${{ github.event.inputs.push == 'true' }}
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
