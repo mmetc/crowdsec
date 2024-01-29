@@ -23,7 +23,7 @@ jobs:
 
     uses: ./.github/workflows/release_publish_docker-image-platform.yml
     with:
-      platform: $ {{ matrix.platform }}
+      platform: ${{ matrix.platform }}
       build_version: ${{ github.event.inputs.build_version }}
       latest: ${{ github.event.inputs.latest == 'true' }}
       push: ${{ github.event.inputs.push == 'true' }}
