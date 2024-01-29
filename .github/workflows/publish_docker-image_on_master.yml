@@ -24,8 +24,6 @@ jobs:
       build_version: dev
       latest: false
       push: true
-      dockerhub_image: ${{ secrets.DOCKER_USERNAME }}/crowdsec
-      ghcr_image: ghcr.io/${{ github.repository_owner }}/crowdsec
       slim: false
       debian: false
     secrets:
@@ -39,8 +37,6 @@ jobs:
       build_version: dev
       latest: false
       push: true
-      dockerhub_image: ${{ secrets.DOCKER_USERNAME }}/crowdsec
-      ghcr_image: ghcr.io/${{ github.repository_owner }}/crowdsec
       slim: false
       debian: true
     secrets:

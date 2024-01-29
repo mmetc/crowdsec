@@ -20,12 +20,6 @@ on:
       push:
         required: true
         type: boolean
-      dockerhub_image:
-        required: true
-        type: string
-      ghcr_image:
-        required: true
-        type: string
       slim:
         required: true
         type: boolean
@@ -35,7 +29,7 @@ on:
 
 jobs:
   push_to_registry:
-    name: Push Docker image to Docker Hub
+    name: Push Docker image to registries
     runs-on: ubuntu-latest
     steps:
 
@@ -47,12 +41,14 @@ jobs:
       - name: Prepare
         id: prep
         run: |
+          DOCKERHUB_IMAGE=${{ secrets.DOCKER_USERNAME }}/crowdsec
+          GHCR_IMAGE=${{ github.repository_ownder }}/crowdsec
           VERSION=${{ inputs.build_version }}
           SLIM=${{ inputs.slim && '-slim' || '' }}
           DEBIAN=${{ inputs.debian && '-debian' || '' }}
-          TAGS="${{ inputs.dockerhub_image }}:${VERSION}${SLIM}${DEBIAN},${{ inputs.ghcr_image }}:${VERSION}${SLIM}${DEBIAN}"
+          TAGS="${DOCKERHUB_IMAGE}:${VERSION}${SLIM}${DEBIAN},${GHCR_IMAGE}:${VERSION}${SLIM}${DEBIAN}"
           if [[ ${{ inputs.latest }} == true ]]; then
-            TAGS=$TAGS,${{ inputs.dockerhub_image }}:latest${DEBIAN},${{ inputs.ghcr_image }}:latest${DEBIAN}
+            TAGS=$TAGS,${DOCKERHUB_IMAGE}:latest${DEBIAN},${GHCR_IMAGE}:latest${DEBIAN}
           fi
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT
           echo "created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
