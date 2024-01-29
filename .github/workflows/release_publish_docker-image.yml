@@ -20,6 +20,7 @@ jobs:
     strategy:
       matrix:
         platform: ["linux/amd64", "linux/386", "linux/arm64", "linux/arm/v7", "linux/arm/v6"]
+        slim: [false, true]
 
     uses: ./.github/workflows/release_publish_docker-image-platform.yml
     with:
@@ -27,6 +28,29 @@ jobs:
       build_version: ${{ github.event.inputs.build_version }}
       latest: ${{ github.event.inputs.latest == 'true' }}
       push: ${{ github.event.inputs.push == 'true' }}
+      dockerhub_image: ${{ secrets.DOCKER_USERNAME }}/crowdsec
+      ghcr_image: ghcr.io/${{ github.repository_owner }}/crowdsec
+      slim: ${{ matrix.slim }}
+      debian: false
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+
+  debian:
+    strategy:
+      matrix:
+        platform: ["linux/amd64", "linux/386", "linux/arm64"]
+
+    uses: ./.github/workflows/release_publish_docker-image-platform.yml
+    with:
+      platform: ${{ matrix.platform }}
+      build_version: ${{ github.event.inputs.build_version }}
+      latest: ${{ github.event.inputs.latest == 'true' }}
+      push: ${{ github.event.inputs.push == 'true' }}
+      dockerhub_image: ${{ secrets.DOCKER_USERNAME }}/crowdsec
+      ghcr_image: ghcr.io/${{ github.repository_owner }}/crowdsec
+      slim: false
+      debian: true
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
