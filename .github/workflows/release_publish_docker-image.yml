@@ -27,17 +27,10 @@ jobs:
         run: |
           DOCKER_IMAGE=${{ secrets.DOCKER_USERNAME }}/crowdsec
           GHCR_IMAGE=ghcr.io/${{ github.repository_owner }}/crowdsec
-          VERSION=edge
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/}
-          elif [[ $GITHUB_REF == refs/heads/* ]]; then
-            VERSION=$(echo ${GITHUB_REF#refs/heads/} | sed -E 's#/+#-#g')
-          elif [[ $GITHUB_REF == refs/pull/* ]]; then
-            VERSION=pr-${{ github.event.number }}
-          fi
+          VERSION=${{ github.event.inputs.build_version }}
           TAGS="${DOCKER_IMAGE}:${VERSION},${GHCR_IMAGE}:${VERSION}"
           TAGS_SLIM="${DOCKER_IMAGE}:${VERSION}-slim,${GHCR_IMAGE}:${VERSION}-slim"
-          if [[ ${{ github.event.action }} == released ]]; then
+          if [[ ${{ github.event.inputs.latest }} == true ]]; then
             TAGS=$TAGS,${DOCKER_IMAGE}:latest,${GHCR_IMAGE}:latest
             TAGS_SLIM=$TAGS_SLIM,${DOCKER_IMAGE}:slim,${GHCR_IMAGE}:slim
           fi
@@ -73,7 +66,7 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true
           tags: ${{ steps.prep.outputs.tags_slim }}
           target: slim
           platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6,linux/386
@@ -87,7 +80,7 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
+          push: true
           tags: ${{ steps.prep.outputs.tags }}
           platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6,linux/386
           labels: |
