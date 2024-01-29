@@ -42,7 +42,7 @@ jobs:
         id: prep
         run: |
           DOCKERHUB_IMAGE=${{ secrets.DOCKER_USERNAME }}/crowdsec
-          GHCR_IMAGE=${{ github.repository_ownder }}/crowdsec
+          GHCR_IMAGE=${{ github.repository_owner }}/crowdsec
           VERSION=${{ inputs.build_version }}
           SLIM=${{ inputs.slim && '-slim' || '' }}
           DEBIAN=${{ inputs.debian && '-debian' || '' }}
