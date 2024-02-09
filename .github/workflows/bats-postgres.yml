@@ -67,7 +67,7 @@ jobs:
         PGUSER: postgres
 
     - name: "Run tests (DB_BACKEND: pgx)"
-      run: make bats-test
+      run: ./test/run-tests ./test/bats --formatter $(pwd)/test/lib/color-formatter
       env:
         DB_BACKEND: pgx
         PGHOST: 127.0.0.1
