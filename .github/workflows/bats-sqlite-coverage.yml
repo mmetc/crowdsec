@@ -4,7 +4,6 @@ on:
   workflow_call:
 
 env:
-  PREFIX_TEST_NAMES_WITH_FILE: true
   TEST_COVERAGE: true
 
 jobs:
