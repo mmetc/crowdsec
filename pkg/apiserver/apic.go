@@ -89,7 +89,7 @@ func (a *apic) FetchScenariosListFromDB() ([]string, error) {
 	//merge all scenarios together
 	for _, v := range machines {
 		machineScenarios := strings.Split(v.Scenarios, ",")
-		log.Debugf("%d scenarios for machine %d", len(machineScenarios), v.ID)
+		log.Debugf("%d scenarios for machine %s", len(machineScenarios), v.ID)
 
 		for _, sv := range machineScenarios {
 			if !slices.Contains(scenarios, sv) && sv != "" {

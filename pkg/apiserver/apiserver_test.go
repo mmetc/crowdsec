@@ -176,7 +176,7 @@ func GetMachineIP(t *testing.T, machineID string, config *csconfig.DatabaseCfg) 
 	require.NoError(t, err)
 
 	for _, machine := range machines {
-		if machine.MachineId == machineID {
+		if machine.ID == machineID {
 			return machine.IpAddress
 		}
 	}

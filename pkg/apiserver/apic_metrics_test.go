@@ -39,7 +39,7 @@ func TestAPICSendMetrics(t *testing.T) {
 			setUp: func(api *apic) {
 				api.dbClient.Ent.Machine.Delete().ExecX(context.Background())
 				api.dbClient.Ent.Machine.Create().
-					SetMachineId("1234").
+					SetID("1234").
 					SetPassword(testPassword.String()).
 					SetIpAddress("1.2.3.4").
 					SetScenarios("crowdsecurity/test").

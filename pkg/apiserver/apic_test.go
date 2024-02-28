@@ -167,7 +167,7 @@ func TestAPICFetchScenariosListFromDB(t *testing.T) {
 			api := getAPIC(t)
 			for machineID, scenarios := range tc.machineIDsWithScenarios {
 				api.dbClient.Ent.Machine.Create().
-					SetMachineId(machineID).
+					SetID(machineID).
 					SetPassword(testPassword.String()).
 					SetIpAddress("1.2.3.4").
 					SetScenarios(scenarios).
@@ -176,7 +176,7 @@ func TestAPICFetchScenariosListFromDB(t *testing.T) {
 
 			scenarios, err := api.FetchScenariosListFromDB()
 			for machineID := range tc.machineIDsWithScenarios {
-				api.dbClient.Ent.Machine.Delete().Where(machine.MachineIdEQ(machineID)).ExecX(context.Background())
+				api.dbClient.Ent.Machine.Delete().Where(machine.IDEQ(machineID)).ExecX(context.Background())
 			}
 			require.NoError(t, err)
 
@@ -354,7 +354,7 @@ func TestAPICGetMetrics(t *testing.T) {
 			cleanUp(apiClient)
 			for i, machineID := range tc.machineIDs {
 				apiClient.dbClient.Ent.Machine.Create().
-					SetMachineId(machineID).
+					SetID(machineID).
 					SetPassword(testPassword.String()).
 					SetIpAddress(fmt.Sprintf("1.2.3.%d", i)).
 					SetScenarios("crowdsecurity/test").
@@ -1141,7 +1141,7 @@ func TestAPICPull(t *testing.T) {
 			name: "test pull",
 			setUp: func() {
 				api.dbClient.Ent.Machine.Create().
-					SetMachineId("1.2.3.4").
+					SetID("1.2.3.4").
 					SetPassword(testPassword.String()).
 					SetIpAddress("1.2.3.4").
 					SetScenarios("crowdsecurity/ssh-bf").
