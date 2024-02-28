@@ -71,7 +71,7 @@ var globalActiveDecisions = prometheus.NewGaugeVec(
 		Name: "cs_active_decisions",
 		Help: "Number of active decisions.",
 	},
-	[]string{"reason", "origin", "action"},
+	[]string{"reason", "origin", "action", "machine"},
 )
 
 var globalAlerts = prometheus.NewGaugeVec(
@@ -125,8 +125,15 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 
 		globalActiveDecisions.Reset()
 
+		machine := "XXX"  // how to get the machine id?
+
 		for _, d := range decisions {
-			globalActiveDecisions.With(prometheus.Labels{"reason": d.Scenario, "origin": d.Origin, "action": d.Type}).Set(float64(d.Count))
+			globalActiveDecisions.With(prometheus.Labels{
+				"reason": d.Scenario,
+				"origin": d.Origin,
+				"action": d.Type,
+				"machine": machine,
+			}).Set(float64(d.Count))
 		}
 
 		globalAlerts.Reset()
