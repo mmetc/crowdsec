@@ -542,8 +542,8 @@ func (aq *AlertQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Alert,
 }
 
 func (aq *AlertQuery) loadOwner(ctx context.Context, query *MachineQuery, nodes []*Alert, init func(*Alert), assign func(*Alert, *Machine)) error {
-	ids := make([]int, 0, len(nodes))
-	nodeids := make(map[int][]*Alert)
+	ids := make([]string, 0, len(nodes))
+	nodeids := make(map[string][]*Alert)
 	for i := range nodes {
 		if nodes[i].machine_alerts == nil {
 			continue

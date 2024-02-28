@@ -75,7 +75,7 @@ type AlertMutation struct {
 	simulated          *bool
 	uuid               *string
 	clearedFields      map[string]struct{}
-	owner              *int
+	owner              *string
 	clearedowner       bool
 	decisions          map[int]struct{}
 	removeddecisions   map[int]struct{}
@@ -1375,7 +1375,7 @@ func (m *AlertMutation) ResetUUID() {
 }
 
 // SetOwnerID sets the "owner" edge to the Machine entity by id.
-func (m *AlertMutation) SetOwnerID(id int) {
+func (m *AlertMutation) SetOwnerID(id string) {
 	m.owner = &id
 }
 
@@ -1390,7 +1390,7 @@ func (m *AlertMutation) OwnerCleared() bool {
 }
 
 // OwnerID returns the "owner" edge ID in the mutation.
-func (m *AlertMutation) OwnerID() (id int, exists bool) {
+func (m *AlertMutation) OwnerID() (id string, exists bool) {
 	if m.owner != nil {
 		return *m.owner, true
 	}
@@ -1400,7 +1400,7 @@ func (m *AlertMutation) OwnerID() (id int, exists bool) {
 // OwnerIDs returns the "owner" edge IDs in the mutation.
 // Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
 // OwnerID instead. It exists only for internal usage by the builders.
-func (m *AlertMutation) OwnerIDs() (ids []int) {
+func (m *AlertMutation) OwnerIDs() (ids []string) {
 	if id := m.owner; id != nil {
 		ids = append(ids, *id)
 	}
@@ -6552,12 +6552,11 @@ type MachineMutation struct {
 	config
 	op             Op
 	typ            string
-	id             *int
+	id             *string
 	created_at     *time.Time
 	updated_at     *time.Time
 	last_push      *time.Time
 	last_heartbeat *time.Time
-	machineId      *string
 	password       *string
 	ipAddress      *string
 	scenarios      *string
@@ -6594,7 +6593,7 @@ func newMachineMutation(c config, op Op, opts ...machineOption) *MachineMutation
 }
 
 // withMachineID sets the ID field of the mutation.
-func withMachineID(id int) machineOption {
+func withMachineID(id string) machineOption {
 	return func(m *MachineMutation) {
 		var (
 			err   error
@@ -6644,9 +6643,15 @@ func (m MachineMutation) Tx() (*Tx, error) {
 	return tx, nil
 }
 
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Machine entities.
+func (m *MachineMutation) SetID(id string) {
+	m.id = &id
+}
+
 // ID returns the ID value in the mutation. Note that the ID is only available
 // if it was provided to the builder or after it was returned from the database.
-func (m *MachineMutation) ID() (id int, exists bool) {
+func (m *MachineMutation) ID() (id string, exists bool) {
 	if m.id == nil {
 		return
 	}
@@ -6657,12 +6662,12 @@ func (m *MachineMutation) ID() (id int, exists bool) {
 // That means, if the mutation is applied within a transaction with an isolation level such
 // as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
 // or updated by the mutation.
-func (m *MachineMutation) IDs(ctx context.Context) ([]int, error) {
+func (m *MachineMutation) IDs(ctx context.Context) ([]string, error) {
 	switch {
 	case m.op.Is(OpUpdateOne | OpDeleteOne):
 		id, exists := m.ID()
 		if exists {
-			return []int{id}, nil
+			return []string{id}, nil
 		}
 		fallthrough
 	case m.op.Is(OpUpdate | OpDelete):
@@ -6866,42 +6871,6 @@ func (m *MachineMutation) LastHeartbeatCleared() bool {
 func (m *MachineMutation) ResetLastHeartbeat() {
 	m.last_heartbeat = nil
 	delete(m.clearedFields, machine.FieldLastHeartbeat)
-}
-
-// SetMachineId sets the "machineId" field.
-func (m *MachineMutation) SetMachineId(s string) {
-	m.machineId = &s
-}
-
-// MachineId returns the value of the "machineId" field in the mutation.
-func (m *MachineMutation) MachineId() (r string, exists bool) {
-	v := m.machineId
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldMachineId returns the old "machineId" field's value of the Machine entity.
-// If the Machine object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *MachineMutation) OldMachineId(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldMachineId is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldMachineId requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldMachineId: %w", err)
-	}
-	return oldValue.MachineId, nil
-}
-
-// ResetMachineId resets all changes to the "machineId" field.
-func (m *MachineMutation) ResetMachineId() {
-	m.machineId = nil
 }
 
 // SetPassword sets the "password" field.
@@ -7283,7 +7252,7 @@ func (m *MachineMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *MachineMutation) Fields() []string {
-	fields := make([]string, 0, 12)
+	fields := make([]string, 0, 11)
 	if m.created_at != nil {
 		fields = append(fields, machine.FieldCreatedAt)
 	}
@@ -7295,9 +7264,6 @@ func (m *MachineMutation) Fields() []string {
 	}
 	if m.last_heartbeat != nil {
 		fields = append(fields, machine.FieldLastHeartbeat)
-	}
-	if m.machineId != nil {
-		fields = append(fields, machine.FieldMachineId)
 	}
 	if m.password != nil {
 		fields = append(fields, machine.FieldPassword)
@@ -7336,8 +7302,6 @@ func (m *MachineMutation) Field(name string) (ent.Value, bool) {
 		return m.LastPush()
 	case machine.FieldLastHeartbeat:
 		return m.LastHeartbeat()
-	case machine.FieldMachineId:
-		return m.MachineId()
 	case machine.FieldPassword:
 		return m.Password()
 	case machine.FieldIpAddress:
@@ -7369,8 +7333,6 @@ func (m *MachineMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldLastPush(ctx)
 	case machine.FieldLastHeartbeat:
 		return m.OldLastHeartbeat(ctx)
-	case machine.FieldMachineId:
-		return m.OldMachineId(ctx)
 	case machine.FieldPassword:
 		return m.OldPassword(ctx)
 	case machine.FieldIpAddress:
@@ -7421,13 +7383,6 @@ func (m *MachineMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetLastHeartbeat(v)
-		return nil
-	case machine.FieldMachineId:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetMachineId(v)
 		return nil
 	case machine.FieldPassword:
 		v, ok := value.(string)
@@ -7583,9 +7538,6 @@ func (m *MachineMutation) ResetField(name string) error {
 		return nil
 	case machine.FieldLastHeartbeat:
 		m.ResetLastHeartbeat()
-		return nil
-	case machine.FieldMachineId:
-		m.ResetMachineId()
 		return nil
 	case machine.FieldPassword:
 		m.ResetPassword()

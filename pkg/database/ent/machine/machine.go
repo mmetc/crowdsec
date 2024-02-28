@@ -13,7 +13,7 @@ const (
 	// Label holds the string label denoting the machine type in the database.
 	Label = "machine"
 	// FieldID holds the string denoting the id field in the database.
-	FieldID = "id"
+	FieldID = "machineId"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -22,8 +22,6 @@ const (
 	FieldLastPush = "last_push"
 	// FieldLastHeartbeat holds the string denoting the last_heartbeat field in the database.
 	FieldLastHeartbeat = "last_heartbeat"
-	// FieldMachineId holds the string denoting the machineid field in the database.
-	FieldMachineId = "machine_id"
 	// FieldPassword holds the string denoting the password field in the database.
 	FieldPassword = "password"
 	// FieldIpAddress holds the string denoting the ipaddress field in the database.
@@ -40,6 +38,8 @@ const (
 	FieldAuthType = "auth_type"
 	// EdgeAlerts holds the string denoting the alerts edge name in mutations.
 	EdgeAlerts = "alerts"
+	// AlertFieldID holds the string denoting the ID field of the Alert.
+	AlertFieldID = "id"
 	// Table holds the table name of the machine in the database.
 	Table = "machines"
 	// AlertsTable is the table that holds the alerts relation/edge.
@@ -58,7 +58,6 @@ var Columns = []string{
 	FieldUpdatedAt,
 	FieldLastPush,
 	FieldLastHeartbeat,
-	FieldMachineId,
 	FieldPassword,
 	FieldIpAddress,
 	FieldScenarios,
@@ -131,11 +130,6 @@ func ByLastHeartbeat(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLastHeartbeat, opts...).ToFunc()
 }
 
-// ByMachineId orders the results by the machineId field.
-func ByMachineId(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldMachineId, opts...).ToFunc()
-}
-
 // ByPassword orders the results by the password field.
 func ByPassword(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPassword, opts...).ToFunc()
@@ -187,7 +181,7 @@ func ByAlerts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 func newAlertsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(AlertsInverseTable, FieldID),
+		sqlgraph.To(AlertsInverseTable, AlertFieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, AlertsTable, AlertsColumn),
 	)
 }

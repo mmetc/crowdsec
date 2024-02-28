@@ -106,8 +106,8 @@ func (mq *MachineQuery) FirstX(ctx context.Context) *Machine {
 
 // FirstID returns the first Machine ID from the query.
 // Returns a *NotFoundError when no Machine ID was found.
-func (mq *MachineQuery) FirstID(ctx context.Context) (id int, err error) {
-	var ids []int
+func (mq *MachineQuery) FirstID(ctx context.Context) (id string, err error) {
+	var ids []string
 	if ids, err = mq.Limit(1).IDs(setContextOp(ctx, mq.ctx, "FirstID")); err != nil {
 		return
 	}
@@ -119,7 +119,7 @@ func (mq *MachineQuery) FirstID(ctx context.Context) (id int, err error) {
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (mq *MachineQuery) FirstIDX(ctx context.Context) int {
+func (mq *MachineQuery) FirstIDX(ctx context.Context) string {
 	id, err := mq.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -157,8 +157,8 @@ func (mq *MachineQuery) OnlyX(ctx context.Context) *Machine {
 // OnlyID is like Only, but returns the only Machine ID in the query.
 // Returns a *NotSingularError when more than one Machine ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (mq *MachineQuery) OnlyID(ctx context.Context) (id int, err error) {
-	var ids []int
+func (mq *MachineQuery) OnlyID(ctx context.Context) (id string, err error) {
+	var ids []string
 	if ids, err = mq.Limit(2).IDs(setContextOp(ctx, mq.ctx, "OnlyID")); err != nil {
 		return
 	}
@@ -174,7 +174,7 @@ func (mq *MachineQuery) OnlyID(ctx context.Context) (id int, err error) {
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (mq *MachineQuery) OnlyIDX(ctx context.Context) int {
+func (mq *MachineQuery) OnlyIDX(ctx context.Context) string {
 	id, err := mq.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -202,7 +202,7 @@ func (mq *MachineQuery) AllX(ctx context.Context) []*Machine {
 }
 
 // IDs executes the query and returns a list of Machine IDs.
-func (mq *MachineQuery) IDs(ctx context.Context) (ids []int, err error) {
+func (mq *MachineQuery) IDs(ctx context.Context) (ids []string, err error) {
 	if mq.ctx.Unique == nil && mq.path != nil {
 		mq.Unique(true)
 	}
@@ -214,7 +214,7 @@ func (mq *MachineQuery) IDs(ctx context.Context) (ids []int, err error) {
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (mq *MachineQuery) IDsX(ctx context.Context) []int {
+func (mq *MachineQuery) IDsX(ctx context.Context) []string {
 	ids, err := mq.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -404,7 +404,7 @@ func (mq *MachineQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Mach
 
 func (mq *MachineQuery) loadAlerts(ctx context.Context, query *AlertQuery, nodes []*Machine, init func(*Machine), assign func(*Machine, *Alert)) error {
 	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[int]*Machine)
+	nodeids := make(map[string]*Machine)
 	for i := range nodes {
 		fks = append(fks, nodes[i].ID)
 		nodeids[nodes[i].ID] = nodes[i]
@@ -444,7 +444,7 @@ func (mq *MachineQuery) sqlCount(ctx context.Context) (int, error) {
 }
 
 func (mq *MachineQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(machine.Table, machine.Columns, sqlgraph.NewFieldSpec(machine.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewQuerySpec(machine.Table, machine.Columns, sqlgraph.NewFieldSpec(machine.FieldID, field.TypeString))
 	_spec.From = mq.sql
 	if unique := mq.ctx.Unique; unique != nil {
 		_spec.Unique = *unique

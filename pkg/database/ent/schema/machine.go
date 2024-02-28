@@ -27,7 +27,7 @@ func (Machine) Fields() []ent.Field {
 		field.Time("last_heartbeat").
 			Default(types.UtcNow).
 			UpdateDefault(types.UtcNow).Nillable().Optional(),
-		field.String("machineId").Unique(),
+		field.String("id").StorageKey("machineId"),
 		field.String("password").Sensitive(),
 		field.String("ipAddress"),
 		field.String("scenarios").MaxLen(100000).Optional(),

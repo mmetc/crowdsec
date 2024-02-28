@@ -26,7 +26,7 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 
 	machineID := "N/A"
 	if alert.Edges.Owner != nil {
-		machineID = alert.Edges.Owner.MachineId
+		machineID = alert.Edges.Owner.ID
 	}
 
 	outputAlert := models.Alert{

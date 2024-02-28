@@ -68,6 +68,8 @@ const (
 	EdgeEvents = "events"
 	// EdgeMetas holds the string denoting the metas edge name in mutations.
 	EdgeMetas = "metas"
+	// MachineFieldID holds the string denoting the ID field of the Machine.
+	MachineFieldID = "machineId"
 	// Table holds the table name of the alert in the database.
 	Table = "alerts"
 	// OwnerTable is the table that holds the owner relation/edge.
@@ -346,7 +348,7 @@ func ByMetas(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 func newOwnerStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(OwnerInverseTable, FieldID),
+		sqlgraph.To(OwnerInverseTable, MachineFieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, OwnerTable, OwnerColumn),
 	)
 }

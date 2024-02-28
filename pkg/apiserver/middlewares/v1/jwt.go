@@ -82,7 +82,7 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 	ret.machineID = fmt.Sprintf("%s@%s", extractedCN, c.ClientIP())
 
 	ret.clientMachine, err = j.DbClient.Ent.Machine.Query().
-		Where(machine.MachineId(ret.machineID)).
+		Where(machine.ID(ret.machineID)).
 		First(j.DbClient.CTX)
 	if ent.IsNotFound(err) {
 		//Machine was not found, let's create it
@@ -110,7 +110,7 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 		if ret.clientMachine.AuthType != types.TlsAuthType {
 			return nil, fmt.Errorf("machine %s attempted to auth with TLS cert but it is configured to use %s", ret.machineID, ret.clientMachine.AuthType)
 		}
-		ret.machineID = ret.clientMachine.MachineId
+		ret.machineID = ret.clientMachine.ID
 	}
 
 	loginInput := struct {
@@ -150,7 +150,7 @@ func (j *JWT) authPlain(c *gin.Context) (*authInput, error) {
 	ret.scenariosInput = loginInput.Scenarios
 
 	ret.clientMachine, err = j.DbClient.Ent.Machine.Query().
-		Where(machine.MachineId(ret.machineID)).
+		Where(machine.ID(ret.machineID)).
 		First(j.DbClient.CTX)
 	if err != nil {
 		log.Infof("Error machine login for %s : %+v ", ret.machineID, err)
@@ -222,11 +222,11 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	}
 
 	if auth.clientMachine.IpAddress != c.ClientIP() && auth.clientMachine.IpAddress != "" {
-		log.Warningf("new IP address detected for machine '%s': %s (old: %s)", auth.clientMachine.MachineId, c.ClientIP(), auth.clientMachine.IpAddress)
+		log.Warningf("new IP address detected for machine '%s': %s (old: %s)", auth.clientMachine.ID, c.ClientIP(), auth.clientMachine.IpAddress)
 
 		err = j.DbClient.UpdateMachineIP(c.ClientIP(), auth.clientMachine.ID)
 		if err != nil {
-			log.Errorf("Failed to update ip address for '%s': %s\n", auth.clientMachine.MachineId, err)
+			log.Errorf("Failed to update ip address for '%s': %s\n", auth.clientMachine.ID, err)
 			return nil, jwt.ErrFailedAuthentication
 		}
 	}
@@ -238,7 +238,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	}
 
 	if err := j.DbClient.UpdateMachineVersion(useragent[1], auth.clientMachine.ID); err != nil {
-		log.Errorf("unable to update machine '%s' version '%s': %s", auth.clientMachine.MachineId, useragent[1], err)
+		log.Errorf("unable to update machine '%s' version '%s': %s", auth.clientMachine.ID, useragent[1], err)
 		log.Errorf("bad user agent from : %s", c.ClientIP())
 		return nil, jwt.ErrFailedAuthentication
 	}

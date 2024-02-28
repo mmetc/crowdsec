@@ -77,12 +77,6 @@ func (mu *MachineUpdate) ClearLastHeartbeat() *MachineUpdate {
 	return mu
 }
 
-// SetMachineId sets the "machineId" field.
-func (mu *MachineUpdate) SetMachineId(s string) *MachineUpdate {
-	mu.mutation.SetMachineId(s)
-	return mu
-}
-
 // SetPassword sets the "password" field.
 func (mu *MachineUpdate) SetPassword(s string) *MachineUpdate {
 	mu.mutation.SetPassword(s)
@@ -286,7 +280,7 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if err := mu.check(); err != nil {
 		return n, err
 	}
-	_spec := sqlgraph.NewUpdateSpec(machine.Table, machine.Columns, sqlgraph.NewFieldSpec(machine.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewUpdateSpec(machine.Table, machine.Columns, sqlgraph.NewFieldSpec(machine.FieldID, field.TypeString))
 	if ps := mu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -317,9 +311,6 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if mu.mutation.LastHeartbeatCleared() {
 		_spec.ClearField(machine.FieldLastHeartbeat, field.TypeTime)
-	}
-	if value, ok := mu.mutation.MachineId(); ok {
-		_spec.SetField(machine.FieldMachineId, field.TypeString, value)
 	}
 	if value, ok := mu.mutation.Password(); ok {
 		_spec.SetField(machine.FieldPassword, field.TypeString, value)
@@ -461,12 +452,6 @@ func (muo *MachineUpdateOne) SetLastHeartbeat(t time.Time) *MachineUpdateOne {
 // ClearLastHeartbeat clears the value of the "last_heartbeat" field.
 func (muo *MachineUpdateOne) ClearLastHeartbeat() *MachineUpdateOne {
 	muo.mutation.ClearLastHeartbeat()
-	return muo
-}
-
-// SetMachineId sets the "machineId" field.
-func (muo *MachineUpdateOne) SetMachineId(s string) *MachineUpdateOne {
-	muo.mutation.SetMachineId(s)
 	return muo
 }
 
@@ -686,7 +671,7 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 	if err := muo.check(); err != nil {
 		return _node, err
 	}
-	_spec := sqlgraph.NewUpdateSpec(machine.Table, machine.Columns, sqlgraph.NewFieldSpec(machine.FieldID, field.TypeInt))
+	_spec := sqlgraph.NewUpdateSpec(machine.Table, machine.Columns, sqlgraph.NewFieldSpec(machine.FieldID, field.TypeString))
 	id, ok := muo.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Machine.id" for update`)}
@@ -734,9 +719,6 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 	}
 	if muo.mutation.LastHeartbeatCleared() {
 		_spec.ClearField(machine.FieldLastHeartbeat, field.TypeTime)
-	}
-	if value, ok := muo.mutation.MachineId(); ok {
-		_spec.SetField(machine.FieldMachineId, field.TypeString, value)
 	}
 	if value, ok := muo.mutation.Password(); ok {
 		_spec.SetField(machine.FieldPassword, field.TypeString, value)

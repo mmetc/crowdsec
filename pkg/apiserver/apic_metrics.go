@@ -25,7 +25,7 @@ func (a *apic) GetMetrics() (*models.Metrics, error) {
 	for i, machine := range machines {
 		machinesInfo[i] = &models.MetricsAgentInfo{
 			Version:    machine.Version,
-			Name:       machine.MachineId,
+			Name:       machine.ID,
 			LastUpdate: machine.UpdatedAt.Format(time.RFC3339),
 			LastPush:   ptr.OrEmpty(machine.LastPush).Format(time.RFC3339),
 		}
@@ -62,7 +62,7 @@ func (a *apic) fetchMachineIDs() ([]string, error) {
 
 	ret := make([]string, len(machines))
 	for i, machine := range machines {
-		ret[i] = machine.MachineId
+		ret[i] = machine.ID
 	}
 	// sorted slices are required for the slices.Equal comparison
 	slices.Sort(ret)

@@ -77,12 +77,6 @@ func (mc *MachineCreate) SetNillableLastHeartbeat(t *time.Time) *MachineCreate {
 	return mc
 }
 
-// SetMachineId sets the "machineId" field.
-func (mc *MachineCreate) SetMachineId(s string) *MachineCreate {
-	mc.mutation.SetMachineId(s)
-	return mc
-}
-
 // SetPassword sets the "password" field.
 func (mc *MachineCreate) SetPassword(s string) *MachineCreate {
 	mc.mutation.SetPassword(s)
@@ -165,6 +159,12 @@ func (mc *MachineCreate) SetNillableAuthType(s *string) *MachineCreate {
 	return mc
 }
 
+// SetID sets the "id" field.
+func (mc *MachineCreate) SetID(s string) *MachineCreate {
+	mc.mutation.SetID(s)
+	return mc
+}
+
 // AddAlertIDs adds the "alerts" edge to the Alert entity by IDs.
 func (mc *MachineCreate) AddAlertIDs(ids ...int) *MachineCreate {
 	mc.mutation.AddAlertIDs(ids...)
@@ -243,9 +243,6 @@ func (mc *MachineCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (mc *MachineCreate) check() error {
-	if _, ok := mc.mutation.MachineId(); !ok {
-		return &ValidationError{Name: "machineId", err: errors.New(`ent: missing required field "Machine.machineId"`)}
-	}
 	if _, ok := mc.mutation.Password(); !ok {
 		return &ValidationError{Name: "password", err: errors.New(`ent: missing required field "Machine.password"`)}
 	}
@@ -277,8 +274,13 @@ func (mc *MachineCreate) sqlSave(ctx context.Context) (*Machine, error) {
 		}
 		return nil, err
 	}
-	id := _spec.ID.Value.(int64)
-	_node.ID = int(id)
+	if _spec.ID.Value != nil {
+		if id, ok := _spec.ID.Value.(string); ok {
+			_node.ID = id
+		} else {
+			return nil, fmt.Errorf("unexpected Machine.ID type: %T", _spec.ID.Value)
+		}
+	}
 	mc.mutation.id = &_node.ID
 	mc.mutation.done = true
 	return _node, nil
@@ -287,8 +289,12 @@ func (mc *MachineCreate) sqlSave(ctx context.Context) (*Machine, error) {
 func (mc *MachineCreate) createSpec() (*Machine, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Machine{config: mc.config}
-		_spec = sqlgraph.NewCreateSpec(machine.Table, sqlgraph.NewFieldSpec(machine.FieldID, field.TypeInt))
+		_spec = sqlgraph.NewCreateSpec(machine.Table, sqlgraph.NewFieldSpec(machine.FieldID, field.TypeString))
 	)
+	if id, ok := mc.mutation.ID(); ok {
+		_node.ID = id
+		_spec.ID.Value = id
+	}
 	if value, ok := mc.mutation.CreatedAt(); ok {
 		_spec.SetField(machine.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = &value
@@ -304,10 +310,6 @@ func (mc *MachineCreate) createSpec() (*Machine, *sqlgraph.CreateSpec) {
 	if value, ok := mc.mutation.LastHeartbeat(); ok {
 		_spec.SetField(machine.FieldLastHeartbeat, field.TypeTime, value)
 		_node.LastHeartbeat = &value
-	}
-	if value, ok := mc.mutation.MachineId(); ok {
-		_spec.SetField(machine.FieldMachineId, field.TypeString, value)
-		_node.MachineId = value
 	}
 	if value, ok := mc.mutation.Password(); ok {
 		_spec.SetField(machine.FieldPassword, field.TypeString, value)
@@ -401,10 +403,6 @@ func (mcb *MachineCreateBulk) Save(ctx context.Context) ([]*Machine, error) {
 					return nil, err
 				}
 				mutation.id = &nodes[i].ID
-				if specs[i].ID.Value != nil {
-					id := specs[i].ID.Value.(int64)
-					nodes[i].ID = int(id)
-				}
 				mutation.done = true
 				return nodes[i], nil
 			})

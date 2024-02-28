@@ -186,7 +186,7 @@ func (cli *cliMachines) list() error {
 
 			hb, _ := getLastHeartbeat(m)
 
-			if err := csvwriter.Write([]string{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, hb}); err != nil {
+			if err := csvwriter.Write([]string{m.ID, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, hb}); err != nil {
 				return fmt.Errorf("failed to write raw output: %w", err)
 			}
 		}
@@ -357,8 +357,8 @@ func (cli *cliMachines) deleteValid(_ *cobra.Command, args []string, toComplete 
 	ret := []string{}
 
 	for _, machine := range machines {
-		if strings.Contains(machine.MachineId, toComplete) && !slices.Contains(args, machine.MachineId) {
-			ret = append(ret, machine.MachineId)
+		if strings.Contains(machine.ID, toComplete) && !slices.Contains(args, machine.ID) {
+			ret = append(ret, machine.ID)
 		}
 	}
 

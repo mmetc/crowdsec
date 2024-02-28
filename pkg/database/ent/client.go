@@ -1213,7 +1213,7 @@ func (c *MachineClient) UpdateOne(m *Machine) *MachineUpdateOne {
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *MachineClient) UpdateOneID(id int) *MachineUpdateOne {
+func (c *MachineClient) UpdateOneID(id string) *MachineUpdateOne {
 	mutation := newMachineMutation(c.config, OpUpdateOne, withMachineID(id))
 	return &MachineUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
@@ -1230,7 +1230,7 @@ func (c *MachineClient) DeleteOne(m *Machine) *MachineDeleteOne {
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *MachineClient) DeleteOneID(id int) *MachineDeleteOne {
+func (c *MachineClient) DeleteOneID(id string) *MachineDeleteOne {
 	builder := c.Delete().Where(machine.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
@@ -1247,12 +1247,12 @@ func (c *MachineClient) Query() *MachineQuery {
 }
 
 // Get returns a Machine entity by its id.
-func (c *MachineClient) Get(ctx context.Context, id int) (*Machine, error) {
+func (c *MachineClient) Get(ctx context.Context, id string) (*Machine, error) {
 	return c.Query().Where(machine.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *MachineClient) GetX(ctx context.Context, id int) *Machine {
+func (c *MachineClient) GetX(ctx context.Context, id string) *Machine {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)

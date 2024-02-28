@@ -16,7 +16,7 @@ import (
 type Machine struct {
 	config `json:"-"`
 	// ID of the ent.
-	ID int `json:"id,omitempty"`
+	ID string `json:"id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt *time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -25,8 +25,6 @@ type Machine struct {
 	LastPush *time.Time `json:"last_push,omitempty"`
 	// LastHeartbeat holds the value of the "last_heartbeat" field.
 	LastHeartbeat *time.Time `json:"last_heartbeat,omitempty"`
-	// MachineId holds the value of the "machineId" field.
-	MachineId string `json:"machineId,omitempty"`
 	// Password holds the value of the "password" field.
 	Password string `json:"-"`
 	// IpAddress holds the value of the "ipAddress" field.
@@ -72,9 +70,7 @@ func (*Machine) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case machine.FieldIsValidated:
 			values[i] = new(sql.NullBool)
-		case machine.FieldID:
-			values[i] = new(sql.NullInt64)
-		case machine.FieldMachineId, machine.FieldPassword, machine.FieldIpAddress, machine.FieldScenarios, machine.FieldVersion, machine.FieldStatus, machine.FieldAuthType:
+		case machine.FieldID, machine.FieldPassword, machine.FieldIpAddress, machine.FieldScenarios, machine.FieldVersion, machine.FieldStatus, machine.FieldAuthType:
 			values[i] = new(sql.NullString)
 		case machine.FieldCreatedAt, machine.FieldUpdatedAt, machine.FieldLastPush, machine.FieldLastHeartbeat:
 			values[i] = new(sql.NullTime)
@@ -94,11 +90,11 @@ func (m *Machine) assignValues(columns []string, values []any) error {
 	for i := range columns {
 		switch columns[i] {
 		case machine.FieldID:
-			value, ok := values[i].(*sql.NullInt64)
-			if !ok {
-				return fmt.Errorf("unexpected type %T for field id", value)
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field id", values[i])
+			} else if value.Valid {
+				m.ID = value.String
 			}
-			m.ID = int(value.Int64)
 		case machine.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
@@ -126,12 +122,6 @@ func (m *Machine) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				m.LastHeartbeat = new(time.Time)
 				*m.LastHeartbeat = value.Time
-			}
-		case machine.FieldMachineId:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field machineId", values[i])
-			} else if value.Valid {
-				m.MachineId = value.String
 			}
 		case machine.FieldPassword:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -235,9 +225,6 @@ func (m *Machine) String() string {
 		builder.WriteString("last_heartbeat=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
-	builder.WriteString(", ")
-	builder.WriteString("machineId=")
-	builder.WriteString(m.MachineId)
 	builder.WriteString(", ")
 	builder.WriteString("password=<sensitive>")
 	builder.WriteString(", ")

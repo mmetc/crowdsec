@@ -485,13 +485,13 @@ func (au *AlertUpdate) ClearUUID() *AlertUpdate {
 }
 
 // SetOwnerID sets the "owner" edge to the Machine entity by ID.
-func (au *AlertUpdate) SetOwnerID(id int) *AlertUpdate {
+func (au *AlertUpdate) SetOwnerID(id string) *AlertUpdate {
 	au.mutation.SetOwnerID(id)
 	return au
 }
 
 // SetNillableOwnerID sets the "owner" edge to the Machine entity by ID if the given value is not nil.
-func (au *AlertUpdate) SetNillableOwnerID(id *int) *AlertUpdate {
+func (au *AlertUpdate) SetNillableOwnerID(id *string) *AlertUpdate {
 	if id != nil {
 		au = au.SetOwnerID(*id)
 	}
@@ -823,7 +823,7 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{alert.OwnerColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(machine.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(machine.FieldID, field.TypeString),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -836,7 +836,7 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{alert.OwnerColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(machine.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(machine.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {
@@ -1452,13 +1452,13 @@ func (auo *AlertUpdateOne) ClearUUID() *AlertUpdateOne {
 }
 
 // SetOwnerID sets the "owner" edge to the Machine entity by ID.
-func (auo *AlertUpdateOne) SetOwnerID(id int) *AlertUpdateOne {
+func (auo *AlertUpdateOne) SetOwnerID(id string) *AlertUpdateOne {
 	auo.mutation.SetOwnerID(id)
 	return auo
 }
 
 // SetNillableOwnerID sets the "owner" edge to the Machine entity by ID if the given value is not nil.
-func (auo *AlertUpdateOne) SetNillableOwnerID(id *int) *AlertUpdateOne {
+func (auo *AlertUpdateOne) SetNillableOwnerID(id *string) *AlertUpdateOne {
 	if id != nil {
 		auo = auo.SetOwnerID(*id)
 	}
@@ -1820,7 +1820,7 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 			Columns: []string{alert.OwnerColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(machine.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(machine.FieldID, field.TypeString),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -1833,7 +1833,7 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 			Columns: []string{alert.OwnerColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(machine.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(machine.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

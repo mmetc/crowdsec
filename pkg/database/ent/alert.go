@@ -67,7 +67,7 @@ type Alert struct {
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the AlertQuery when eager-loading is set.
 	Edges          AlertEdges `json:"edges"`
-	machine_alerts *int
+	machine_alerts *string
 	selectValues   sql.SelectValues
 }
 
@@ -142,7 +142,7 @@ func (*Alert) scanValues(columns []string) ([]any, error) {
 		case alert.FieldCreatedAt, alert.FieldUpdatedAt, alert.FieldStartedAt, alert.FieldStoppedAt:
 			values[i] = new(sql.NullTime)
 		case alert.ForeignKeys[0]: // machine_alerts
-			values[i] = new(sql.NullInt64)
+			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -305,11 +305,11 @@ func (a *Alert) assignValues(columns []string, values []any) error {
 				a.UUID = value.String
 			}
 		case alert.ForeignKeys[0]:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field machine_alerts", value)
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field machine_alerts", values[i])
 			} else if value.Valid {
-				a.machine_alerts = new(int)
-				*a.machine_alerts = int(value.Int64)
+				a.machine_alerts = new(string)
+				*a.machine_alerts = value.String
 			}
 		default:
 			a.selectValues.Set(columns[i], values[i])

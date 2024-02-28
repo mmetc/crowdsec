@@ -11,48 +11,58 @@ import (
 )
 
 // ID filters vertices based on their ID field.
-func ID(id int) predicate.Machine {
+func ID(id string) predicate.Machine {
 	return predicate.Machine(sql.FieldEQ(FieldID, id))
 }
 
 // IDEQ applies the EQ predicate on the ID field.
-func IDEQ(id int) predicate.Machine {
+func IDEQ(id string) predicate.Machine {
 	return predicate.Machine(sql.FieldEQ(FieldID, id))
 }
 
 // IDNEQ applies the NEQ predicate on the ID field.
-func IDNEQ(id int) predicate.Machine {
+func IDNEQ(id string) predicate.Machine {
 	return predicate.Machine(sql.FieldNEQ(FieldID, id))
 }
 
 // IDIn applies the In predicate on the ID field.
-func IDIn(ids ...int) predicate.Machine {
+func IDIn(ids ...string) predicate.Machine {
 	return predicate.Machine(sql.FieldIn(FieldID, ids...))
 }
 
 // IDNotIn applies the NotIn predicate on the ID field.
-func IDNotIn(ids ...int) predicate.Machine {
+func IDNotIn(ids ...string) predicate.Machine {
 	return predicate.Machine(sql.FieldNotIn(FieldID, ids...))
 }
 
 // IDGT applies the GT predicate on the ID field.
-func IDGT(id int) predicate.Machine {
+func IDGT(id string) predicate.Machine {
 	return predicate.Machine(sql.FieldGT(FieldID, id))
 }
 
 // IDGTE applies the GTE predicate on the ID field.
-func IDGTE(id int) predicate.Machine {
+func IDGTE(id string) predicate.Machine {
 	return predicate.Machine(sql.FieldGTE(FieldID, id))
 }
 
 // IDLT applies the LT predicate on the ID field.
-func IDLT(id int) predicate.Machine {
+func IDLT(id string) predicate.Machine {
 	return predicate.Machine(sql.FieldLT(FieldID, id))
 }
 
 // IDLTE applies the LTE predicate on the ID field.
-func IDLTE(id int) predicate.Machine {
+func IDLTE(id string) predicate.Machine {
 	return predicate.Machine(sql.FieldLTE(FieldID, id))
+}
+
+// IDEqualFold applies the EqualFold predicate on the ID field.
+func IDEqualFold(id string) predicate.Machine {
+	return predicate.Machine(sql.FieldEqualFold(FieldID, id))
+}
+
+// IDContainsFold applies the ContainsFold predicate on the ID field.
+func IDContainsFold(id string) predicate.Machine {
+	return predicate.Machine(sql.FieldContainsFold(FieldID, id))
 }
 
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
@@ -73,11 +83,6 @@ func LastPush(v time.Time) predicate.Machine {
 // LastHeartbeat applies equality check predicate on the "last_heartbeat" field. It's identical to LastHeartbeatEQ.
 func LastHeartbeat(v time.Time) predicate.Machine {
 	return predicate.Machine(sql.FieldEQ(FieldLastHeartbeat, v))
-}
-
-// MachineId applies equality check predicate on the "machineId" field. It's identical to MachineIdEQ.
-func MachineId(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldEQ(FieldMachineId, v))
 }
 
 // Password applies equality check predicate on the "password" field. It's identical to PasswordEQ.
@@ -313,71 +318,6 @@ func LastHeartbeatIsNil() predicate.Machine {
 // LastHeartbeatNotNil applies the NotNil predicate on the "last_heartbeat" field.
 func LastHeartbeatNotNil() predicate.Machine {
 	return predicate.Machine(sql.FieldNotNull(FieldLastHeartbeat))
-}
-
-// MachineIdEQ applies the EQ predicate on the "machineId" field.
-func MachineIdEQ(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldEQ(FieldMachineId, v))
-}
-
-// MachineIdNEQ applies the NEQ predicate on the "machineId" field.
-func MachineIdNEQ(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldNEQ(FieldMachineId, v))
-}
-
-// MachineIdIn applies the In predicate on the "machineId" field.
-func MachineIdIn(vs ...string) predicate.Machine {
-	return predicate.Machine(sql.FieldIn(FieldMachineId, vs...))
-}
-
-// MachineIdNotIn applies the NotIn predicate on the "machineId" field.
-func MachineIdNotIn(vs ...string) predicate.Machine {
-	return predicate.Machine(sql.FieldNotIn(FieldMachineId, vs...))
-}
-
-// MachineIdGT applies the GT predicate on the "machineId" field.
-func MachineIdGT(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldGT(FieldMachineId, v))
-}
-
-// MachineIdGTE applies the GTE predicate on the "machineId" field.
-func MachineIdGTE(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldGTE(FieldMachineId, v))
-}
-
-// MachineIdLT applies the LT predicate on the "machineId" field.
-func MachineIdLT(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldLT(FieldMachineId, v))
-}
-
-// MachineIdLTE applies the LTE predicate on the "machineId" field.
-func MachineIdLTE(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldLTE(FieldMachineId, v))
-}
-
-// MachineIdContains applies the Contains predicate on the "machineId" field.
-func MachineIdContains(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldContains(FieldMachineId, v))
-}
-
-// MachineIdHasPrefix applies the HasPrefix predicate on the "machineId" field.
-func MachineIdHasPrefix(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldHasPrefix(FieldMachineId, v))
-}
-
-// MachineIdHasSuffix applies the HasSuffix predicate on the "machineId" field.
-func MachineIdHasSuffix(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldHasSuffix(FieldMachineId, v))
-}
-
-// MachineIdEqualFold applies the EqualFold predicate on the "machineId" field.
-func MachineIdEqualFold(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldEqualFold(FieldMachineId, v))
-}
-
-// MachineIdContainsFold applies the ContainsFold predicate on the "machineId" field.
-func MachineIdContainsFold(v string) predicate.Machine {
-	return predicate.Machine(sql.FieldContainsFold(FieldMachineId, v))
 }
 
 // PasswordEQ applies the EQ predicate on the "password" field.

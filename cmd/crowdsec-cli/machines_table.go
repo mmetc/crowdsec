@@ -27,7 +27,7 @@ func getAgentsTable(out io.Writer, machines []*ent.Machine) {
 			hb = emoji.Warning + " " + hb
 		}
 
-		t.AddRow(m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, hb)
+		t.AddRow(m.ID, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, hb)
 	}
 
 	t.Render()

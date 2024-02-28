@@ -339,13 +339,13 @@ func (ac *AlertCreate) SetNillableUUID(s *string) *AlertCreate {
 }
 
 // SetOwnerID sets the "owner" edge to the Machine entity by ID.
-func (ac *AlertCreate) SetOwnerID(id int) *AlertCreate {
+func (ac *AlertCreate) SetOwnerID(id string) *AlertCreate {
 	ac.mutation.SetOwnerID(id)
 	return ac
 }
 
 // SetNillableOwnerID sets the "owner" edge to the Machine entity by ID if the given value is not nil.
-func (ac *AlertCreate) SetNillableOwnerID(id *int) *AlertCreate {
+func (ac *AlertCreate) SetNillableOwnerID(id *string) *AlertCreate {
 	if id != nil {
 		ac = ac.SetOwnerID(*id)
 	}
@@ -605,7 +605,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Columns: []string{alert.OwnerColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(machine.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(machine.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {
