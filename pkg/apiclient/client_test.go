@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"path"
 	"runtime"
+	"strings"
 	"testing"
 
 	log "github.com/sirupsen/logrus"
@@ -41,7 +42,30 @@ func setupWithPrefix(urlPrefix string) (*http.ServeMux, string, func()) {
 	return mux, server.URL, server.Close
 }
 
+// toUNCPath converts a Windows file path to a UNC path.
+func toUNCPath(path string) (string, error) {
+	colonIdx := strings.Index(path, ":")
+	if colonIdx == -1 {
+		return "", fmt.Errorf("invalid path format, missing drive letter: %s", path)
+	}
+
+	// convert backslashes to forward slashes
+	remaining := strings.ReplaceAll(path[colonIdx+1:], "\\", "/")
+
+	uncPath := fmt.Sprintf("//localhost/%s$%s", path[colonIdx-1:colonIdx], remaining)
+
+	return uncPath, nil
+}
+
 func setupUnixSocketWithPrefix(socket string, urlPrefix string) (mux *http.ServeMux, serverURL string, teardown func()) {
+	var err error
+	if runtime.GOOS == "windows" {
+		socket, err = toUNCPath(socket)
+		if err != nil {
+			log.Fatalf("converting to UNC path: %s", err)
+		}
+	}
+
 	mux = http.NewServeMux()
 	baseURLPath := "/" + urlPrefix
 
