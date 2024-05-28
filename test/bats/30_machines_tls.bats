@@ -16,40 +16,86 @@ setup_file() {
     CFDIR="${BATS_TEST_DIRNAME}/testdata/cfssl"
     export CFDIR
 
-    # Generate the CA
-    cfssl gencert --initca "${CFDIR}/ca.json" 2>/dev/null | cfssljson --bare "${tmpdir}/ca"
+    # Root CA
+    cfssl gencert -loglevel 2 \
+        --initca "${CFDIR}/ca_root.json" \
+        | cfssljson --bare "${tmpdir}/root"
 
-    # Generate an intermediate
-    cfssl gencert --initca "${CFDIR}/intermediate.json" 2>/dev/null | cfssljson --bare "${tmpdir}/inter"
-    cfssl sign -ca "${tmpdir}/ca.pem" -ca-key "${tmpdir}/ca-key.pem" -config "${CFDIR}/profiles.json" -profile intermediate_ca "${tmpdir}/inter.csr" 2>/dev/null | cfssljson --bare "${tmpdir}/inter"
+    # Intermediate CAs (valid or revoked)
+    for cert_name in "inter" "inter_rev"; do
+        cfssl gencert -loglevel 2 \
+            --initca "${CFDIR}/ca_intermediate.json" \
+            | cfssljson --bare "${tmpdir}/${cert_name}"
 
-    # Generate server cert for crowdsec with the intermediate
-    cfssl gencert -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" -config "${CFDIR}/profiles.json" -profile=server "${CFDIR}/server.json" 2>/dev/null | cfssljson --bare "${tmpdir}/server"
-
-    # Generate client cert for the agent
-    cfssl gencert -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/agent.json" 2>/dev/null | cfssljson --bare "${tmpdir}/agent"
-
-    # Genearte client cert for the agent with an invalid OU
-    cfssl gencert -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/agent_invalid.json" 2>/dev/null | cfssljson --bare "${tmpdir}/agent_bad_ou"
-
-    # Generate client cert for the bouncer directly signed by the CA, it should be refused by crowdsec as uses the intermediate
-    cfssl gencert -ca "${tmpdir}/ca.pem" -ca-key "${tmpdir}/ca-key.pem" -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/agent.json" 2>/dev/null | cfssljson --bare "${tmpdir}/agent_invalid"
-
-    # Generate revoked client cert
-    for cert_name in "revoked_1" "revoked_2"; do
-        cfssl gencert -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" -config "${CFDIR}/profiles.json" -profile=client "${CFDIR}/agent.json" 2>/dev/null | cfssljson --bare "${tmpdir}/${cert_name}"
-        cfssl certinfo -cert "${tmpdir}/${cert_name}.pem" | jq -r '.serial_number' > "${tmpdir}/serials_${cert_name}.txt"
+        cfssl sign -loglevel 2 \
+            -ca "${tmpdir}/root.pem" -ca-key "${tmpdir}/root-key.pem" \
+            -config "${CFDIR}/profiles.json" -profile intermediate_ca "${tmpdir}/${cert_name}.csr" \
+            | cfssljson --bare "${tmpdir}/${cert_name}"
     done
 
-    # Generate separate CRL blocks and concatenate them
-    for cert_name in "revoked_1" "revoked_2"; do
-        echo '-----BEGIN X509 CRL-----' > "${tmpdir}/crl_${cert_name}.pem"
-        cfssl gencrl "${tmpdir}/serials_${cert_name}.txt" "${tmpdir}/ca.pem" "${tmpdir}/ca-key.pem" >> "${tmpdir}/crl_${cert_name}.pem"
-        echo '-----END X509 CRL-----' >> "${tmpdir}/crl_${cert_name}.pem"
-    done
-    cat "${tmpdir}/crl_revoked_1.pem" "${tmpdir}/crl_revoked_2.pem" >"${tmpdir}/crl.pem"
+    # Server cert for crowdsec with the intermediate
+    cfssl gencert -loglevel 2 \
+        -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" \
+        -config "${CFDIR}/profiles.json" -profile=server "${CFDIR}/server.json" \
+        | cfssljson --bare "${tmpdir}/server"
 
-    cat "${tmpdir}/ca.pem" "${tmpdir}/inter.pem" > "${tmpdir}/bundle.pem"
+    # Client certs (valid or revoked)
+    for cert_name in "leaf" "leaf_rev1" "leaf_rev2"; do
+        cfssl gencert -loglevel 3 \
+            -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" \
+            -config "${CFDIR}/profiles.json" -profile=client \
+            "${CFDIR}/agent.json" \
+            | cfssljson --bare "${tmpdir}/${cert_name}"
+    done
+
+    # Client cert (by revoked inter)
+    cfssl gencert -loglevel 3 \
+        -ca "${tmpdir}/inter_rev.pem" -ca-key "${tmpdir}/inter_rev-key.pem" \
+        -config "${CFDIR}/profiles.json" -profile=client \
+        "${CFDIR}/agent.json" \
+        | cfssljson --bare "${tmpdir}/leaf_rev3"
+
+    # Bad client cert (invalid OU)
+    cfssl gencert -loglevel 3 \
+        -ca "${tmpdir}/inter.pem" -ca-key "${tmpdir}/inter-key.pem" \
+        -config "${CFDIR}/profiles.json" -profile=client \
+        "${CFDIR}/agent_invalid.json" \
+        | cfssljson --bare "${tmpdir}/leaf_bad_ou"
+
+    # Bad client cert (directly signed by the CA, it should be refused by crowdsec as it uses the intermediate)
+    cfssl gencert -loglevel 3 \
+        -ca "${tmpdir}/root.pem" -ca-key "${tmpdir}/root-key.pem" \
+        -config "${CFDIR}/profiles.json" -profile=client \
+        "${CFDIR}/agent.json" \
+        | cfssljson --bare "${tmpdir}/leaf_invalid"
+
+    truncate -s 0 "${tmpdir}/crl.pem"
+
+    # Revoke certs
+    {
+        echo '-----BEGIN X509 CRL-----'
+        cfssl gencrl \
+            <(cfssl certinfo -cert "${tmpdir}/leaf_rev1.pem" | jq -r '.serial_number') \
+            "${tmpdir}/inter.pem" \
+            "${tmpdir}/inter-key.pem"
+        echo '-----END X509 CRL-----'
+
+        echo '-----BEGIN X509 CRL-----'
+        cfssl gencrl \
+            <(cfssl certinfo -cert "${tmpdir}/leaf_rev2.pem" | jq -r '.serial_number') \
+            "${tmpdir}/inter.pem" \
+            "${tmpdir}/inter-key.pem"
+        echo '-----END X509 CRL-----'
+
+        echo '-----BEGIN X509 CRL-----'
+        cfssl gencrl \
+            <(cfssl certinfo -cert "${tmpdir}/inter_rev.pem" | jq -r '.serial_number') \
+            "${tmpdir}/root.pem" \
+            "${tmpdir}/root-key.pem"
+        echo '-----END X509 CRL-----'
+    } >> "${tmpdir}/crl.pem"
+
+    cat "${tmpdir}/root.pem" "${tmpdir}/inter.pem" > "${tmpdir}/bundle.pem"
 
     config_set '
         .api.server.tls.cert_file=strenv(tmpdir) + "/server.pem" |
@@ -108,8 +154,8 @@ teardown() {
 @test "invalid OU for agent" {
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" '
         .ca_cert_path=strenv(tmpdir) + "/bundle.pem" |
-        .key_path=strenv(tmpdir) + "/agent_bad_ou-key.pem" |
-        .cert_path=strenv(tmpdir) + "/agent_bad_ou.pem" |
+        .key_path=strenv(tmpdir) + "/leaf_bad_ou-key.pem" |
+        .cert_path=strenv(tmpdir) + "/leaf_bad_ou.pem" |
         .url="https://127.0.0.1:8080"
     '
 
@@ -122,8 +168,8 @@ teardown() {
 @test "we have exactly one machine registered with TLS" {
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" '
         .ca_cert_path=strenv(tmpdir) + "/bundle.pem" |
-        .key_path=strenv(tmpdir) + "/agent-key.pem" |
-        .cert_path=strenv(tmpdir) + "/agent.pem" |
+        .key_path=strenv(tmpdir) + "/leaf-key.pem" |
+        .cert_path=strenv(tmpdir) + "/leaf.pem" |
         .url="https://127.0.0.1:8080"
     '
 
@@ -163,7 +209,7 @@ teardown() {
 
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" '
         del(.ca_cert_path) |
-        .key_path=strenv(tmpdir) + "/agent-key.pem"
+        .key_path=strenv(tmpdir) + "/leaf-key.pem"
     '
 
     rune -1 cscli lapi status
@@ -171,7 +217,7 @@ teardown() {
 
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" '
         del(.key_path) |
-        .cert_path=strenv(tmpdir) + "/agent.pem"
+        .cert_path=strenv(tmpdir) + "/leaf.pem"
     '
 
     rune -1 cscli lapi status
@@ -183,8 +229,8 @@ teardown() {
 @test "invalid cert for agent" {
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" '
         .ca_cert_path=strenv(tmpdir) + "/bundle.pem" |
-        .key_path=strenv(tmpdir) + "/agent_invalid-key.pem" |
-        .cert_path=strenv(tmpdir) + "/agent_invalid.pem" |
+        .key_path=strenv(tmpdir) + "/leaf_invalid-key.pem" |
+        .cert_path=strenv(tmpdir) + "/leaf_invalid.pem" |
         .url="https://127.0.0.1:8080"
     '
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" 'del(.login,.password)'
@@ -196,7 +242,7 @@ teardown() {
 
 @test "revoked cert for agent" {
     # we have two certificates revoked by different CRL blocks
-    for cert_name in "revoked_1" "revoked_2"; do
+    for cert_name in "leaf_rev1" "leaf_rev2"; do
         truncate_log
         cert_name="$cert_name" config_set "${CONFIG_DIR}/local_api_credentials.yaml" '
             .ca_cert_path=strenv(tmpdir) + "/bundle.pem" |
@@ -215,3 +261,16 @@ teardown() {
         ./instance-crowdsec stop
     done
 }
+
+# vvv this test must be last, or it can break the ones that follow
+
+@test "allowed_ou can't contain an empty string" {
+    config_set '
+        .common.log_media="stdout" |
+        .api.server.tls.agents_allowed_ou=["agent-ou", ""]
+    '
+    rune -1 wait-for "$CROWDSEC"
+    assert_stderr --partial "allowed_ou configuration contains invalid empty string"
+}
+
+# ^^^ this test must be last, or it can break the ones that follow
