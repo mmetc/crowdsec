@@ -213,17 +213,8 @@ if [ -n "$CERT_FILE" ] || [ -n "$KEY_FILE" ] ; then
     export LAPI_KEY_FILE=${LAPI_KEY_FILE:-$KEY_FILE}
 fi
 
-# Check and prestage databases
-for geodb in GeoLite2-ASN.mmdb GeoLite2-City.mmdb; do
-    # We keep the pre-populated geoip databases in /staging instead of /var,
-    # because if the data directory is bind-mounted from the host, it will be
-    # empty and the files will be out of reach, requiring a runtime download.
-    # We link to them to save about 80Mb compared to cp/mv.
-    if [ ! -e "/var/lib/crowdsec/data/$geodb" ] && [ -e "/staging/var/lib/crowdsec/data/$geodb" ]; then
-        mkdir -p /var/lib/crowdsec/data
-        ln -s "/staging/var/lib/crowdsec/data/$geodb" /var/lib/crowdsec/data/
-    fi
-done
+mkdir -p /var/lib/crowdsec/data/
+rsync -av --ignore-existing /staging/var/lib/crowdsec/data/* /var/lib/crowdsec/data
 
 # Check and prestage /etc/crowdsec
 if [ ! -e "/etc/crowdsec/local_api_credentials.yaml" ] && [ ! -e "/etc/crowdsec/config.yaml" ]; then
