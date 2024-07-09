@@ -213,8 +213,12 @@ if [ -n "$CERT_FILE" ] || [ -n "$KEY_FILE" ] ; then
     export LAPI_KEY_FILE=${LAPI_KEY_FILE:-$KEY_FILE}
 fi
 
-mkdir -p /var/lib/crowdsec/data/
-rsync -av --ignore-existing /staging/var/lib/crowdsec/data/* /var/lib/crowdsec/data
+for target in "/stating/var/lib/crowdsec/data"/*; do
+    fname="$(basename "$target")"
+    if [ ! -e "/var/lib/crowdsec/data/$fname" ]; then
+        ln -s "$target" "/var/lib/crowdsec/data/$fname"
+    fi
+done
 
 # Check and prestage /etc/crowdsec
 if [ ! -e "/etc/crowdsec/local_api_credentials.yaml" ] && [ ! -e "/etc/crowdsec/config.yaml" ]; then
