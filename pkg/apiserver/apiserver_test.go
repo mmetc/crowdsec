@@ -182,12 +182,12 @@ func NewAPITestForwardedFor(t *testing.T) (*gin.Engine, csconfig.Config) {
 }
 
 func ValidateMachine(t *testing.T, machineID string, config *csconfig.DatabaseCfg) {
-	ctx := context.Background()
+	ctx := context.TODO()
 
 	dbClient, err := database.NewClient(ctx, config)
 	require.NoError(t, err)
 
-	err = dbClient.ValidateMachine(machineID)
+	err = dbClient.ValidateMachine(ctx, machineID)
 	require.NoError(t, err)
 }
 
@@ -197,7 +197,7 @@ func GetMachineIP(t *testing.T, machineID string, config *csconfig.DatabaseCfg) 
 	dbClient, err := database.NewClient(ctx, config)
 	require.NoError(t, err)
 
-	machines, err := dbClient.ListMachines()
+	machines, err := dbClient.ListMachines(ctx)
 	require.NoError(t, err)
 
 	for _, machine := range machines {
@@ -278,8 +278,10 @@ func CreateTestMachine(t *testing.T, router *gin.Engine, token string) string {
 
 	body := string(b)
 
+	ctx := context.Background()
+
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "/v1/watchers", strings.NewReader(body))
 	req.Header.Set("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -323,8 +325,10 @@ func TestWithWrongFlushConfig(t *testing.T) {
 func TestUnknownPath(t *testing.T) {
 	router, _ := NewAPITest(t)
 
+	ctx := context.Background()
+
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test", nil)
 	req.Header.Set("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -380,8 +384,10 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, api)
 
+	ctx := context.Background()
+
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/test42", nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", nil)
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
 	assert.Equal(t, 404, w.Code)
@@ -430,8 +436,10 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, api)
 
+	ctx := context.Background()
+
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/test42", nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/test42", nil)
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusNotFound, w.Code)
