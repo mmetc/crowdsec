@@ -113,7 +113,9 @@ func assertTotalAlertCount(t *testing.T, dbClient *database.Client, count int) {
 func TestAPICCAPIPullIsOld(t *testing.T) {
 	api := getAPIC(t)
 
-	isOld, err := api.CAPIPullIsOld()
+	ctx := context.Background()
+
+	isOld, err := api.CAPIPullIsOld(ctx)
 	require.NoError(t, err)
 	assert.True(t, isOld)
 
@@ -124,7 +126,7 @@ func TestAPICCAPIPullIsOld(t *testing.T) {
 		SetScope("Country").
 		SetValue("Blah").
 		SetOrigin(types.CAPIOrigin).
-		SaveX(context.Background())
+		SaveX(ctx)
 
 	api.dbClient.Ent.Alert.Create().
 		SetCreatedAt(time.Now()).
@@ -132,9 +134,9 @@ func TestAPICCAPIPullIsOld(t *testing.T) {
 		AddDecisions(
 			decision,
 		).
-		SaveX(context.Background())
+		SaveX(ctx)
 
-	isOld, err = api.CAPIPullIsOld()
+	isOld, err = api.CAPIPullIsOld(ctx)
 	require.NoError(t, err)
 
 	assert.False(t, isOld)
@@ -230,6 +232,8 @@ func TestNewAPIC(t *testing.T) {
 		},
 	}
 
+	ctx := context.Background()
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			setConfig()
@@ -246,7 +250,7 @@ func TestNewAPIC(t *testing.T) {
 				),
 			))
 			tc.action()
-			_, err := NewAPIC(testConfig, tc.args.dbClient, tc.args.consoleConfig, nil)
+			_, err := NewAPIC(ctx, testConfig, tc.args.dbClient, tc.args.consoleConfig, nil)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
@@ -290,9 +294,11 @@ func TestAPICHandleDeletedDecisions(t *testing.T) {
 }
 
 func TestAPICGetMetrics(t *testing.T) {
+	ctx := context.Background()
+
 	cleanUp := func(api *apic) {
-		api.dbClient.Ent.Bouncer.Delete().ExecX(context.Background())
-		api.dbClient.Ent.Machine.Delete().ExecX(context.Background())
+		api.dbClient.Ent.Bouncer.Delete().ExecX(ctx)
+		api.dbClient.Ent.Machine.Delete().ExecX(ctx)
 	}
 	tests := []struct {
 		name           string
@@ -375,7 +381,7 @@ func TestAPICGetMetrics(t *testing.T) {
 					ExecX(context.Background())
 			}
 
-			foundMetrics, err := apiClient.GetMetrics()
+			foundMetrics, err := apiClient.GetMetrics(ctx)
 			require.NoError(t, err)
 
 			assert.Equal(t, tc.expectedMetric.Bouncers, foundMetrics.Bouncers)
@@ -546,6 +552,7 @@ func TestFillAlertsWithDecisions(t *testing.T) {
 }
 
 func TestAPICWhitelists(t *testing.T) {
+	ctx := context.Background()
 	api := getAPIC(t)
 	// one whitelist on IP, one on CIDR
 	api.whitelists = &csconfig.CapiWhitelist{}
@@ -681,7 +688,7 @@ func TestAPICWhitelists(t *testing.T) {
 	require.NoError(t, err)
 
 	api.apiClient = apic
-	err = api.PullTop(false)
+	err = api.PullTop(ctx, false)
 	require.NoError(t, err)
 
 	assertTotalDecisionCount(t, api.dbClient, 5) // 2 from FIRE + 2 from bl + 1 existing
@@ -732,6 +739,7 @@ func TestAPICWhitelists(t *testing.T) {
 }
 
 func TestAPICPullTop(t *testing.T) {
+	ctx := context.Background()
 	api := getAPIC(t)
 	api.dbClient.Ent.Decision.Create().
 		SetOrigin(types.CAPIOrigin).
@@ -822,7 +830,7 @@ func TestAPICPullTop(t *testing.T) {
 	require.NoError(t, err)
 
 	api.apiClient = apic
-	err = api.PullTop(false)
+	err = api.PullTop(ctx, false)
 	require.NoError(t, err)
 
 	assertTotalDecisionCount(t, api.dbClient, 5)
@@ -856,6 +864,7 @@ func TestAPICPullTop(t *testing.T) {
 }
 
 func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
+	ctx := context.Background()
 	// no decision in db, no last modified parameter.
 	api := getAPIC(t)
 
@@ -909,11 +918,11 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 	require.NoError(t, err)
 
 	api.apiClient = apic
-	err = api.PullTop(false)
+	err = api.PullTop(ctx, false)
 	require.NoError(t, err)
 
 	blocklistConfigItemName := "blocklist:blocklist1:last_pull"
-	lastPullTimestamp, err := api.dbClient.GetConfigItem(blocklistConfigItemName)
+	lastPullTimestamp, err := api.dbClient.GetConfigItem(ctx, blocklistConfigItemName)
 	require.NoError(t, err)
 	assert.NotEqual(t, "", *lastPullTimestamp)
 
@@ -923,14 +932,15 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 		return httpmock.NewStringResponse(304, ""), nil
 	})
 
-	err = api.PullTop(false)
+	err = api.PullTop(ctx, false)
 	require.NoError(t, err)
-	secondLastPullTimestamp, err := api.dbClient.GetConfigItem(blocklistConfigItemName)
+	secondLastPullTimestamp, err := api.dbClient.GetConfigItem(ctx, blocklistConfigItemName)
 	require.NoError(t, err)
 	assert.Equal(t, *lastPullTimestamp, *secondLastPullTimestamp)
 }
 
 func TestAPICPullTopBLCacheForceCall(t *testing.T) {
+	ctx := context.Background()
 	api := getAPIC(t)
 
 	httpmock.Activate()
@@ -1001,11 +1011,12 @@ func TestAPICPullTopBLCacheForceCall(t *testing.T) {
 	require.NoError(t, err)
 
 	api.apiClient = apic
-	err = api.PullTop(false)
+	err = api.PullTop(ctx, false)
 	require.NoError(t, err)
 }
 
 func TestAPICPullBlocklistCall(t *testing.T) {
+	ctx := context.Background()
 	api := getAPIC(t)
 
 	httpmock.Activate()
@@ -1028,7 +1039,7 @@ func TestAPICPullBlocklistCall(t *testing.T) {
 	require.NoError(t, err)
 
 	api.apiClient = apic
-	err = api.PullBlocklist(&modelscapi.BlocklistLink{
+	err = api.PullBlocklist(ctx, &modelscapi.BlocklistLink{
 		URL:         ptr.Of("http://api.crowdsec.net/blocklist1"),
 		Name:        ptr.Of("blocklist1"),
 		Scope:       ptr.Of("Ip"),
@@ -1130,6 +1141,7 @@ func TestAPICPush(t *testing.T) {
 }
 
 func TestAPICPull(t *testing.T) {
+	ctx := context.Background()
 	api := getAPIC(t)
 	tests := []struct {
 		name                  string
@@ -1200,7 +1212,7 @@ func TestAPICPull(t *testing.T) {
 			go func() {
 				logrus.SetOutput(&buf)
 
-				if err := api.Pull(); err != nil {
+				if err := api.Pull(ctx); err != nil {
 					panic(err)
 				}
 			}()
