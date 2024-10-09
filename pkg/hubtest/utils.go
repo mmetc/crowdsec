@@ -76,9 +76,5 @@ func CopyDir(src string, dest string) error {
 		return err
 	}
 
-	if err := os.CopyFS(dest, os.DirFS(src)); err != nil {
-		return err
-	}
-
-	return nil
+	return os.CopyFS(dest, os.DirFS(src))
 }
