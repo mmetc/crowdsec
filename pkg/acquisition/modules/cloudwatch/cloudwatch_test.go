@@ -67,7 +67,6 @@ func (s *CloudwatchSuite) TestWatchLogGroupForStreams() {
 		setup               func(*testing.T, *CloudwatchSource)
 		run                 func(*testing.T, *CloudwatchSource)
 		teardown            func(*testing.T, *CloudwatchSource)
-		expectedResLen      int
 		expectedResMessages []string
 	}{
 		// require a group name that doesn't exist
@@ -137,7 +136,6 @@ stream_name: test_stream_bad`),
 				})
 				require.NoError(t, err)
 			},
-			expectedResLen: 0,
 		},
 		// test stream mismatch
 		{
@@ -181,7 +179,6 @@ stream_regexp: test_bad[0-9]+`),
 				})
 				require.NoError(t, err)
 			},
-			expectedResLen: 0,
 		},
 		// require a group name that does exist and contains a stream in which we are going to put events
 		{
@@ -254,7 +251,6 @@ stream_name: test_stream`),
 				})
 				require.NoError(t, err)
 			},
-			expectedResLen:      3,
 			expectedResMessages: []string{"test_message_1", "test_message_4", "test_message_5"},
 		},
 		// have a stream generate events, reach time-out and gets polled again
@@ -341,7 +337,6 @@ stream_name: test_stream`),
 				})
 				require.NoError(t, err)
 			},
-			expectedResLen:      3,
 			expectedResMessages: []string{"test_message_1", "test_message_41", "test_message_51"},
 		},
 		// have a stream generate events, reach time-out and dead body collection
@@ -400,7 +395,6 @@ stream_name: test_stream`),
 				})
 				require.NoError(t, err)
 			},
-			expectedResLen: 1,
 		},
 	}
 
@@ -466,31 +460,15 @@ stream_name: test_stream`),
 			dbgLogger.Infof("killing datasource")
 			actmb.Kill(nil)
 			<-actmb.Dead()
-			// dbgLogger.Infof("collected events : %d -> %+v", len(rcvd_evts), rcvd_evts)
-			// check results
-			if tc.expectedResLen != -1 {
-				s.Len(rcvdEvts, tc.expectedResLen)
-				dbgLogger.Debugf("got %d expected messages", len(rcvdEvts))
+
+			s.Require().Equal(len(tc.expectedResMessages), len(rcvdEvts), "mismatched result count")
+
+			for i := range tc.expectedResMessages {
+				s.Equal(tc.expectedResMessages[i], rcvdEvts[i].Line.Raw)
 			}
 
-			if len(tc.expectedResMessages) != 0 {
-				res := tc.expectedResMessages
-				for idx, v := range rcvdEvts {
-					if len(res) == 0 {
-						s.T().Fatalf("result %d/%d : received '%s', didn't expect anything (recvd:%d, expected:%d)", idx, len(rcvdEvts), v.Line.Raw, len(rcvdEvts), len(tc.expectedResMessages))
-					}
-
-					if res[0] != v.Line.Raw {
-						s.T().Fatalf("result %d/%d : expected '%s', received '%s' (recvd:%d, expected:%d)", idx, len(rcvdEvts), res[0], v.Line.Raw, len(rcvdEvts), len(tc.expectedResMessages))
-					}
-
-					dbgLogger.Debugf("got message '%s'", res[0])
-					res = res[1:]
-				}
-
-				if len(res) != 0 {
-					s.T().Fatalf("leftover unmatched results : %v", res)
-				}
+			if tc.teardown != nil {
+				tc.teardown(s.T(), &cw)
 			}
 
 			if tc.teardown != nil {
@@ -628,7 +606,6 @@ func (s *CloudwatchSuite) TestOneShotAcquisition() {
 		setup               func(*testing.T, *CloudwatchSource)
 		run                 func(*testing.T, *CloudwatchSource)
 		teardown            func(*testing.T, *CloudwatchSource)
-		expectedResLen      int
 		expectedResMessages []string
 	}{
 		// stream with no data
@@ -655,7 +632,6 @@ func (s *CloudwatchSuite) TestOneShotAcquisition() {
 				})
 				require.NoError(t, err)
 			},
-			expectedResLen: 0,
 		},
 		// stream with one event
 		{
@@ -720,7 +696,6 @@ func (s *CloudwatchSuite) TestOneShotAcquisition() {
 				})
 				require.NoError(t, err)
 			},
-			expectedResLen:      1,
 			expectedResMessages: []string{"test_message_2"},
 		},
 	}
@@ -767,32 +742,10 @@ func (s *CloudwatchSuite) TestOneShotAcquisition() {
 				dbgLogger.Warning("no code to run")
 			}
 
-			if tc.expectedResLen != -1 {
-				if tc.expectedResLen != len(rcvdEvts) {
-					s.T().Fatalf("%s : expected %d results got %d -> %v", tc.name, tc.expectedResLen, len(rcvdEvts), rcvdEvts)
-				} else {
-					dbgLogger.Debugf("got %d expected messages", len(rcvdEvts))
-				}
-			}
+			s.Require().Equal(len(tc.expectedResMessages), len(rcvdEvts), "mismatched result count")
 
-			if len(tc.expectedResMessages) != 0 {
-				res := tc.expectedResMessages
-				for idx, v := range rcvdEvts {
-					if len(res) == 0 {
-						s.T().Fatalf("result %d/%d : received '%s', didn't expect anything (recvd:%d, expected:%d)", idx, len(rcvdEvts), v.Line.Raw, len(rcvdEvts), len(tc.expectedResMessages))
-					}
-
-					if res[0] != v.Line.Raw {
-						s.T().Fatalf("result %d/%d : expected '%s', received '%s' (recvd:%d, expected:%d)", idx, len(rcvdEvts), res[0], v.Line.Raw, len(rcvdEvts), len(tc.expectedResMessages))
-					}
-
-					dbgLogger.Debugf("got message '%s'", res[0])
-					res = res[1:]
-				}
-
-				if len(res) != 0 {
-					s.T().Fatalf("leftover unmatched results : %v", res)
-				}
+			for i := range tc.expectedResMessages {
+				s.Equal(tc.expectedResMessages[i], rcvdEvts[i].Line.Raw)
 			}
 
 			if tc.teardown != nil {
