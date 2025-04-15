@@ -1,12 +1,6 @@
 package cloudwatchacquisition
 
 import (
-	"errors"
-	"fmt"
-	"net"
-	"os"
-	"runtime"
-	"strings"
 	"testing"
 	"time"
 
@@ -14,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
@@ -43,49 +38,25 @@ func deleteAllLogGroups(t *testing.T, cw *CloudwatchSource) {
 	}
 }
 
-func checkForLocalStackAvailability() error {
-	v := os.Getenv("AWS_ENDPOINT_FORCE")
-	if v == "" {
-		return errors.New("missing aws endpoint for tests : AWS_ENDPOINT_FORCE")
-	}
-
-	v = strings.TrimPrefix(v, "http://")
-
-	_, err := net.Dial("tcp", v)
-	if err != nil {
-		return fmt.Errorf("while dialing %s: %w: aws endpoint isn't available", v, err)
-	}
-
-	return nil
+type CloudwatchSuite struct {
+	suite.Suite
 }
 
-func TestMain(m *testing.M) {
-	if runtime.GOOS == "windows" {
-		os.Exit(0)
-	}
-
-	if os.Getenv("TEST_LOCAL_ONLY") != "" {
-		os.Exit(0)
-	}
-
-	if err := checkForLocalStackAvailability(); err != nil {
-		log.Fatalf("local stack error : %s", err)
-	}
-
+func (s *CloudwatchSuite) SetupSuite() {
 	def_PollNewStreamInterval = 1 * time.Second
 	def_PollStreamInterval = 1 * time.Second
 	def_StreamReadTimeout = 10 * time.Second
 	def_MaxStreamAge = 5 * time.Second
 	def_PollDeadStreamInterval = 5 * time.Second
-
-	os.Exit(m.Run())
 }
 
-func TestWatchLogGroupForStreams(t *testing.T) {
-	ctx := t.Context()
+func TestCloudwatchSuite(t *testing.T) {
+	cstest.SetAWSTestEnv(t)
 
-	cstest.SkipOnWindows(t)
+	suite.Run(t, new(CloudwatchSuite))
+}
 
+func (s *CloudwatchSuite) TestWatchLogGroupForStreams() {
 	log.SetLevel(log.DebugLevel)
 
 	tests := []struct {
@@ -96,7 +67,6 @@ func TestWatchLogGroupForStreams(t *testing.T) {
 		setup               func(*testing.T, *CloudwatchSource)
 		run                 func(*testing.T, *CloudwatchSource)
 		teardown            func(*testing.T, *CloudwatchSource)
-		expectedResLen      int
 		expectedResMessages []string
 	}{
 		// require a group name that doesn't exist
@@ -166,7 +136,6 @@ stream_name: test_stream_bad`),
 				})
 				require.NoError(t, err)
 			},
-			expectedResLen: 0,
 		},
 		// test stream mismatch
 		{
@@ -210,7 +179,6 @@ stream_regexp: test_bad[0-9]+`),
 				})
 				require.NoError(t, err)
 			},
-			expectedResLen: 0,
 		},
 		// require a group name that does exist and contains a stream in which we are going to put events
 		{
@@ -283,7 +251,6 @@ stream_name: test_stream`),
 				})
 				require.NoError(t, err)
 			},
-			expectedResLen:      3,
 			expectedResMessages: []string{"test_message_1", "test_message_4", "test_message_5"},
 		},
 		// have a stream generate events, reach time-out and gets polled again
@@ -370,7 +337,6 @@ stream_name: test_stream`),
 				})
 				require.NoError(t, err)
 			},
-			expectedResLen:      3,
 			expectedResMessages: []string{"test_message_1", "test_message_41", "test_message_51"},
 		},
 		// have a stream generate events, reach time-out and dead body collection
@@ -429,19 +395,18 @@ stream_name: test_stream`),
 				})
 				require.NoError(t, err)
 			},
-			expectedResLen: 1,
 		},
 	}
 
 	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
+		s.Run(tc.name, func() {
 			dbgLogger := log.New().WithField("test", tc.name)
 			dbgLogger.Logger.SetLevel(log.DebugLevel)
 			dbgLogger.Infof("starting test")
 
 			cw := CloudwatchSource{}
 			err := cw.Configure(tc.config, dbgLogger, configuration.METRICS_NONE)
-			cstest.RequireErrorContains(t, err, tc.expectedCfgErr)
+			cstest.RequireErrorContains(s.T(), err, tc.expectedCfgErr)
 
 			if tc.expectedCfgErr != "" {
 				return
@@ -449,7 +414,7 @@ stream_name: test_stream`),
 
 			// run pre-routine : tests use it to set group & streams etc.
 			if tc.setup != nil {
-				tc.setup(t, &cw)
+				tc.setup(s.T(), &cw)
 			}
 
 			out := make(chan types.Event)
@@ -460,10 +425,10 @@ stream_name: test_stream`),
 
 			actmb := tomb.Tomb{}
 			actmb.Go(func() error {
-				err := cw.StreamingAcquisition(ctx, out, &actmb)
+				err := cw.StreamingAcquisition(s.T().Context(), out, &actmb)
 
 				dbgLogger.Infof("acquis done")
-				cstest.RequireErrorContains(t, err, tc.expectedStartErr)
+				cstest.RequireErrorContains(s.T(), err, tc.expectedStartErr)
 
 				return nil
 			})
@@ -483,7 +448,7 @@ stream_name: test_stream`),
 			})
 
 			if tc.run != nil {
-				tc.run(t, &cw)
+				tc.run(s.T(), &cw)
 			} else {
 				dbgLogger.Warning("no code to run")
 			}
@@ -495,48 +460,25 @@ stream_name: test_stream`),
 			dbgLogger.Infof("killing datasource")
 			actmb.Kill(nil)
 			<-actmb.Dead()
-			// dbgLogger.Infof("collected events : %d -> %+v", len(rcvd_evts), rcvd_evts)
-			// check results
-			if tc.expectedResLen != -1 {
-				if tc.expectedResLen != len(rcvdEvts) {
-					t.Fatalf("%s : expected %d results got %d -> %v", tc.name, tc.expectedResLen, len(rcvdEvts), rcvdEvts)
-				}
 
-				dbgLogger.Debugf("got %d expected messages", len(rcvdEvts))
-			}
+			s.Require().Equal(len(tc.expectedResMessages), len(rcvdEvts), "mismatched result count")
 
-			if len(tc.expectedResMessages) != 0 {
-				res := tc.expectedResMessages
-				for idx, v := range rcvdEvts {
-					if len(res) == 0 {
-						t.Fatalf("result %d/%d : received '%s', didn't expect anything (recvd:%d, expected:%d)", idx, len(rcvdEvts), v.Line.Raw, len(rcvdEvts), len(tc.expectedResMessages))
-					}
-
-					if res[0] != v.Line.Raw {
-						t.Fatalf("result %d/%d : expected '%s', received '%s' (recvd:%d, expected:%d)", idx, len(rcvdEvts), res[0], v.Line.Raw, len(rcvdEvts), len(tc.expectedResMessages))
-					}
-
-					dbgLogger.Debugf("got message '%s'", res[0])
-					res = res[1:]
-				}
-
-				if len(res) != 0 {
-					t.Fatalf("leftover unmatched results : %v", res)
-				}
+			for i := range tc.expectedResMessages {
+				s.Equal(tc.expectedResMessages[i], rcvdEvts[i].Line.Raw)
 			}
 
 			if tc.teardown != nil {
-				tc.teardown(t, &cw)
+				tc.teardown(s.T(), &cw)
+			}
+
+			if tc.teardown != nil {
+				tc.teardown(s.T(), &cw)
 			}
 		})
 	}
 }
 
-func TestConfiguration(t *testing.T) {
-	ctx := t.Context()
-
-	cstest.SkipOnWindows(t)
-
+func (s *CloudwatchSuite) TestConfiguration() {
 	log.SetLevel(log.DebugLevel)
 
 	tests := []struct {
@@ -578,13 +520,13 @@ stream_name: test_stream`),
 	}
 
 	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
+		s.Run(tc.name, func() {
 			dbgLogger := log.New().WithField("test", tc.name)
 			dbgLogger.Logger.SetLevel(log.DebugLevel)
 
 			cw := CloudwatchSource{}
 			err := cw.Configure(tc.config, dbgLogger, configuration.METRICS_NONE)
-			cstest.RequireErrorContains(t, err, tc.expectedCfgErr)
+			cstest.RequireErrorContains(s.T(), err, tc.expectedCfgErr)
 
 			if tc.expectedCfgErr != "" {
 				return
@@ -595,12 +537,12 @@ stream_name: test_stream`),
 
 			switch cw.GetMode() {
 			case "tail":
-				err = cw.StreamingAcquisition(ctx, out, &tmb)
+				err = cw.StreamingAcquisition(s.T().Context(), out, &tmb)
 			case "cat":
-				err = cw.OneShotAcquisition(ctx, out, &tmb)
+				err = cw.OneShotAcquisition(s.T().Context(), out, &tmb)
 			}
 
-			cstest.RequireErrorContains(t, err, tc.expectedStartErr)
+			cstest.RequireErrorContains(s.T(), err, tc.expectedStartErr)
 
 			log.Debugf("killing ...")
 			tmb.Kill(nil)
@@ -610,9 +552,7 @@ stream_name: test_stream`),
 	}
 }
 
-func TestConfigureByDSN(t *testing.T) {
-	cstest.SkipOnWindows(t)
-
+func (s *CloudwatchSuite) TestConfigureByDSN() {
 	log.SetLevel(log.DebugLevel)
 
 	tests := []struct {
@@ -644,22 +584,18 @@ func TestConfigureByDSN(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
+		s.Run(tc.name, func() {
 			dbgLogger := log.New().WithField("test", tc.name)
 			dbgLogger.Logger.SetLevel(log.DebugLevel)
 
 			cw := CloudwatchSource{}
 			err := cw.ConfigureByDSN(tc.dsn, tc.labels, dbgLogger, "")
-			cstest.RequireErrorContains(t, err, tc.expectedCfgErr)
+			cstest.RequireErrorContains(s.T(), err, tc.expectedCfgErr)
 		})
 	}
 }
 
-func TestOneShotAcquisition(t *testing.T) {
-	ctx := t.Context()
-
-	cstest.SkipOnWindows(t)
-
+func (s *CloudwatchSuite) TestOneShotAcquisition() {
 	log.SetLevel(log.DebugLevel)
 
 	tests := []struct {
@@ -670,7 +606,6 @@ func TestOneShotAcquisition(t *testing.T) {
 		setup               func(*testing.T, *CloudwatchSource)
 		run                 func(*testing.T, *CloudwatchSource)
 		teardown            func(*testing.T, *CloudwatchSource)
-		expectedResLen      int
 		expectedResMessages []string
 	}{
 		// stream with no data
@@ -697,7 +632,6 @@ func TestOneShotAcquisition(t *testing.T) {
 				})
 				require.NoError(t, err)
 			},
-			expectedResLen: 0,
 		},
 		// stream with one event
 		{
@@ -762,20 +696,19 @@ func TestOneShotAcquisition(t *testing.T) {
 				})
 				require.NoError(t, err)
 			},
-			expectedResLen:      1,
 			expectedResMessages: []string{"test_message_2"},
 		},
 	}
 
 	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
+		s.Run(tc.name, func() {
 			dbgLogger := log.New().WithField("test", tc.name)
 			dbgLogger.Logger.SetLevel(log.DebugLevel)
 			dbgLogger.Infof("starting test")
 
 			cw := CloudwatchSource{}
 			err := cw.ConfigureByDSN(tc.dsn, map[string]string{"type": "test"}, dbgLogger, "")
-			cstest.RequireErrorContains(t, err, tc.expectedCfgErr)
+			cstest.RequireErrorContains(s.T(), err, tc.expectedCfgErr)
 
 			if tc.expectedCfgErr != "" {
 				return
@@ -784,7 +717,7 @@ func TestOneShotAcquisition(t *testing.T) {
 			dbgLogger.Infof("config done test")
 			// run pre-routine : tests use it to set group & streams etc.
 			if tc.setup != nil {
-				tc.setup(t, &cw)
+				tc.setup(s.T(), &cw)
 			}
 
 			out := make(chan types.Event, 100)
@@ -793,8 +726,8 @@ func TestOneShotAcquisition(t *testing.T) {
 
 			dbgLogger.Infof("running StreamingAcquisition")
 
-			err = cw.OneShotAcquisition(ctx, out, &tmb)
-			cstest.RequireErrorContains(t, err, tc.expectedStartErr)
+			err = cw.OneShotAcquisition(s.T().Context(), out, &tmb)
+			cstest.RequireErrorContains(s.T(), err, tc.expectedStartErr)
 			dbgLogger.Infof("acquis done")
 
 			close(out)
@@ -804,41 +737,19 @@ func TestOneShotAcquisition(t *testing.T) {
 			}
 
 			if tc.run != nil {
-				tc.run(t, &cw)
+				tc.run(s.T(), &cw)
 			} else {
 				dbgLogger.Warning("no code to run")
 			}
 
-			if tc.expectedResLen != -1 {
-				if tc.expectedResLen != len(rcvdEvts) {
-					t.Fatalf("%s : expected %d results got %d -> %v", tc.name, tc.expectedResLen, len(rcvdEvts), rcvdEvts)
-				} else {
-					dbgLogger.Debugf("got %d expected messages", len(rcvdEvts))
-				}
-			}
+			s.Require().Equal(len(tc.expectedResMessages), len(rcvdEvts), "mismatched result count")
 
-			if len(tc.expectedResMessages) != 0 {
-				res := tc.expectedResMessages
-				for idx, v := range rcvdEvts {
-					if len(res) == 0 {
-						t.Fatalf("result %d/%d : received '%s', didn't expect anything (recvd:%d, expected:%d)", idx, len(rcvdEvts), v.Line.Raw, len(rcvdEvts), len(tc.expectedResMessages))
-					}
-
-					if res[0] != v.Line.Raw {
-						t.Fatalf("result %d/%d : expected '%s', received '%s' (recvd:%d, expected:%d)", idx, len(rcvdEvts), res[0], v.Line.Raw, len(rcvdEvts), len(tc.expectedResMessages))
-					}
-
-					dbgLogger.Debugf("got message '%s'", res[0])
-					res = res[1:]
-				}
-
-				if len(res) != 0 {
-					t.Fatalf("leftover unmatched results : %v", res)
-				}
+			for i := range tc.expectedResMessages {
+				s.Equal(tc.expectedResMessages[i], rcvdEvts[i].Line.Raw)
 			}
 
 			if tc.teardown != nil {
-				tc.teardown(t, &cw)
+				tc.teardown(s.T(), &cw)
 			}
 		})
 	}
