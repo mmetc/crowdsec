@@ -5,8 +5,6 @@ changelog:
     labels:
       - ignore-for-release
       - kind/refactoring
-    authors:
-      - dependabot
   categories:
     - title: "New features"
       labels:
@@ -20,6 +18,8 @@ changelog:
     - title: "Dependencies"
       labels:
         - kind/dependencies
+      authors:
+        - dependabot
     - title: Other Changes
       labels:
         - "*"
