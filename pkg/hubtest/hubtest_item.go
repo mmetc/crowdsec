@@ -426,7 +426,9 @@ func (t *HubTestItem) RunWithNucleiTemplate(ctx context.Context) error {
 		}
 	}
 
-	crowdsecDaemon.Process.Kill()
+	if err := crowdsecDaemon.Process.Kill(); err != nil {
+		log.Errorf("unable to kill crowdsec daemon for test '%s': %s", t.Name, err)
+	}
 
 	return nil
 }
