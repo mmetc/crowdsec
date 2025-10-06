@@ -49,7 +49,7 @@ PLUGINS ?= $(patsubst ./cmd/notification-%,%,$(wildcard ./cmd/notification-*))
 #--------------------------------------
 
 GO = go
-GOTEST = $(GO) test
+GOTEST = $(GO) test -race
 
 BUILD_CODENAME ?= alphaga
 
@@ -340,12 +340,12 @@ endif
 .PHONY: test
 test: check_gotestsum testenv  ## Run unit tests
 # The quotes in the next command are required for PowerShell
-	gotestsum --format $(GOTESTSUM_FORMAT) --format-hide-empty-pkg -- "-tags=$(GO_TAGS)" ./...
+	gotestsum --format $(GOTESTSUM_FORMAT) --format-hide-empty-pkg -- -race "-tags=$(GO_TAGS)" ./...
 
 .PHONY: testcover
 testcover: check_gotestsum testenv  ## Run unit tests with coverage report
 # The quotes in the next command are required for PowerShell
-	gotestsum --format $(GOTESTSUM_FORMAT) --format-hide-empty-pkg -- -covermode=atomic "-coverprofile=coverage.out" -coverpkg=./... "-tags=$(GO_TAGS)" ./...
+	gotestsum --format $(GOTESTSUM_FORMAT) --format-hide-empty-pkg -- -race -covermode=atomic "-coverprofile=coverage.out" -coverpkg=./... "-tags=$(GO_TAGS)" ./...
 
 .PHONY: check_golangci-lint
 check_golangci-lint:
