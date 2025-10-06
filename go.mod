@@ -73,7 +73,7 @@ require (
 	github.com/prometheus/prom2json v1.3.0
 	github.com/r3labs/diff/v2 v2.15.1
 	github.com/sanity-io/litter v1.5.8
-	github.com/segmentio/kafka-go v0.4.48
+	github.com/segmentio/kafka-go v0.4.49
 	github.com/shirou/gopsutil/v4 v4.25.8
 	github.com/sirupsen/logrus v1.9.3
 	github.com/slack-go/slack v0.16.0
