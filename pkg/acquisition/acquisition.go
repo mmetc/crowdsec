@@ -90,10 +90,9 @@ func DataSourceConfigure(
 	}
 
 	if lapiClientAware, ok := dataSrc.(types.LAPIClientAware); ok {
-		if clientConfig == nil {
-			return nil, errors.New("crowdsec configuration not loaded while initializing appsec - this is a bug, plese report")
+		if clientConfig != nil {
+			lapiClientAware.SetClientConfig(clientConfig)
 		}
-		lapiClientAware.SetClientConfig(clientConfig)
 	}
 
 	/* configure the actual datasource */

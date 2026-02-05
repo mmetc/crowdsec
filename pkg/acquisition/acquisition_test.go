@@ -302,7 +302,7 @@ func TestLoadAcquisitionFromFiles(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.TestName, func(t *testing.T) {
 			hub := cwhub.Hub{}
-			dss, err := LoadAcquisitionFromFiles(ctx, &tc.Config, nil, &hub)
+			dss, err := LoadAcquisitionFromFiles(ctx, &tc.Config, nil, &hub, nil)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 
 			if tc.ExpectedError != "" {
@@ -564,7 +564,7 @@ func TestConfigureByDSN(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.dsn, func(t *testing.T) {
 			hub := cwhub.Hub{}
-			source, err := LoadAcquisitionFromDSN(ctx, tc.dsn, map[string]string{"type": "test_label"}, "", &hub)
+			source, err := LoadAcquisitionFromDSN(ctx, tc.dsn, map[string]string{"type": "test_label"}, "", &hub, nil)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 
 			if tc.ExpectedError != "" {

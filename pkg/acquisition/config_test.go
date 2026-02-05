@@ -137,7 +137,18 @@ func TestParseSourceConfig(t *testing.T) {
 
 					if s.expectValid {
 						require.False(t, hasWant, "valid config must not include # wantErr: directive")
-						parsed, err := ParseSourceConfig(ctx, fileContent, metrics.AcquisitionMetricsLevelNone, &hub, nil)
+						
+						// Provide mock client config for appsec datasources
+						var clientConfig *csconfig.LocalApiClientCfg
+						if strings.Contains(path, "appsec") {
+							clientConfig = &csconfig.LocalApiClientCfg{
+								Credentials: &csconfig.ApiCredentialsCfg{
+									URL: "http://localhost:8080/",
+								},
+							}
+						}
+						
+						parsed, err := ParseSourceConfig(ctx, fileContent, metrics.AcquisitionMetricsLevelNone, &hub, clientConfig)
 						require.NoError(t, err)
 						require.NotNil(t, parsed)
 						if schema != "" {
@@ -155,7 +166,23 @@ func TestParseSourceConfig(t *testing.T) {
 					require.True(t, hasWant, "invalid config must include '# wantErr: <exact error>'")
 					require.NotEmpty(t, wantErr, "wantErr directive found but empty")
 
-					parsed, err := ParseSourceConfig(ctx, fileContent, metrics.AcquisitionMetricsLevelNone, &hub, nil)
+					// Provide mock client config for appsec datasources that need it
+					var clientConfig *csconfig.LocalApiClientCfg
+					if strings.Contains(path, "appsec") {
+						if strings.Contains(wantErr, "missing lapi client credentials") {
+							// For this specific test, provide clientConfig but without Credentials
+							clientConfig = &csconfig.LocalApiClientCfg{}
+						} else {
+							// For other appsec tests, provide full mock config
+							clientConfig = &csconfig.LocalApiClientCfg{
+								Credentials: &csconfig.ApiCredentialsCfg{
+									URL: "http://localhost:8080/",
+								},
+							}
+						}
+					}
+
+					parsed, err := ParseSourceConfig(ctx, fileContent, metrics.AcquisitionMetricsLevelNone, &hub, clientConfig)
 					require.Error(t, err, "got no error, expected %q", wantErr)
 					require.Nil(t, parsed)
 					assert.Equal(t, wantErr, err.Error())
