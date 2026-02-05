@@ -25,8 +25,6 @@ var defaultConfigDir = "/etc/crowdsec"
 // defaultDataDir is the base path to all data files, to be overridden in the Makefile */
 var defaultDataDir = "/var/lib/crowdsec/data/"
 
-var globalConfig = Config{}
-
 // Config contains top-level defaults -> overridden by configuration file -> overridden by CLI flags
 type Config struct {
 	// just a path to ourselves :p
@@ -97,13 +95,7 @@ func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool
 	cfg.loadHub()
 	cfg.loadCSCLI()
 
-	globalConfig = cfg
-
 	return &cfg, configData, nil
-}
-
-func GetConfig() Config {
-	return globalConfig
 }
 
 func NewDefaultConfig() *Config {

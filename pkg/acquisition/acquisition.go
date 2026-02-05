@@ -62,6 +62,7 @@ func DataSourceConfigure(
 	yamlConfig []byte,
 	metricsLevel metrics.AcquisitionMetricsLevel,
 	hub *cwhub.Hub,
+	clientConfig *csconfig.LocalApiClientCfg,
 ) (types.DataSource, error) {
 	factory, err := registry.LookupFactory(commonConfig.Source)
 	if err != nil {
@@ -89,11 +90,10 @@ func DataSourceConfigure(
 	}
 
 	if lapiClientAware, ok := dataSrc.(types.LAPIClientAware); ok {
-		cConfig := csconfig.GetConfig()
-		if cConfig.API == nil {
+		if clientConfig == nil {
 			return nil, errors.New("crowdsec configuration not loaded while initializing appsec - this is a bug, plese report")
 		}
-		lapiClientAware.SetClientConfig(cConfig.API.Client)
+		lapiClientAware.SetClientConfig(clientConfig)
 	}
 
 	/* configure the actual datasource */
@@ -110,6 +110,7 @@ func LoadAcquisitionFromDSN(
 	labels map[string]string,
 	transformExpr string,
 	hub *cwhub.Hub,
+	clientConfig *csconfig.LocalApiClientCfg,
 ) (types.DataSource, error) {
 	frags := strings.Split(dsn, ":")
 	if len(frags) == 1 {
@@ -138,8 +139,9 @@ func LoadAcquisitionFromDSN(
 	}
 
 	if lapiClientAware, ok := dataSrc.(types.LAPIClientAware); ok {
-		cConfig := csconfig.GetConfig()
-		lapiClientAware.SetClientConfig(cConfig.API.Client)
+		if clientConfig != nil {
+			lapiClientAware.SetClientConfig(clientConfig)
+		}
 	}
 
 	dsnConf, ok := dataSrc.(types.DSNConfigurer)
@@ -225,7 +227,7 @@ var ErrEmptyYAMLDocument = errors.New("empty yaml document")
 // - validate common fields
 // - delegate per-source config validation to the appropriate module
 // - compile transform expression
-func ParseSourceConfig(ctx context.Context, yamlDoc []byte, metricsLevel metrics.AcquisitionMetricsLevel, hub *cwhub.Hub) (*ParsedSourceConfig, error) {
+func ParseSourceConfig(ctx context.Context, yamlDoc []byte, metricsLevel metrics.AcquisitionMetricsLevel, hub *cwhub.Hub, clientConfig *csconfig.LocalApiClientCfg) (*ParsedSourceConfig, error) {
 	detectedType, err := detectType(bytes.NewReader(yamlDoc))
 	if err != nil {
 		return nil, err
@@ -287,7 +289,7 @@ func ParseSourceConfig(ctx context.Context, yamlDoc []byte, metricsLevel metrics
 	uniqueID := uuid.NewString()
 	sub.UniqueId = uniqueID
 
-	src, err := DataSourceConfigure(ctx, sub, yamlDoc, metricsLevel, hub)
+	src, err := DataSourceConfigure(ctx, sub, yamlDoc, metricsLevel, hub, clientConfig)
 	if err != nil {
 		return nil, fmt.Errorf("datasource of type %s: %w", sub.Source, err)
 	}
@@ -321,6 +323,7 @@ func sourcesFromFile(
 	acquisFile string,
 	metricsLevel metrics.AcquisitionMetricsLevel,
 	hub *cwhub.Hub,
+	clientConfig *csconfig.LocalApiClientCfg,
 ) ([]types.DataSource, error) {
 	var sources []types.DataSource
 
@@ -352,7 +355,7 @@ func sourcesFromFile(
 
 		loc := formatConfigLocation(acquisFile, len(documents) > 1, idx)
 
-		parsed, err := ParseSourceConfig(ctx, yamlDoc, metricsLevel, hub)
+		parsed, err := ParseSourceConfig(ctx, yamlDoc, metricsLevel, hub, clientConfig)
 
 		// report data source detection, it can be required to understand an error
 		if parsed != nil {
@@ -395,13 +398,14 @@ func LoadAcquisitionFromFiles(
 	config *csconfig.CrowdsecServiceCfg,
 	prom *csconfig.PrometheusCfg,
 	hub *cwhub.Hub,
+	clientConfig *csconfig.LocalApiClientCfg,
 ) ([]types.DataSource, error) {
 	var allSources []types.DataSource
 
 	metricsLevel := GetMetricsLevelFromPromCfg(prom)
 
 	for _, acquisFile := range config.AcquisitionFiles {
-		sources, err := sourcesFromFile(ctx, acquisFile, metricsLevel, hub)
+		sources, err := sourcesFromFile(ctx, acquisFile, metricsLevel, hub, clientConfig)
 		if err != nil {
 			return nil, err
 		}

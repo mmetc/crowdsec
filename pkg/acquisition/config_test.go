@@ -137,7 +137,7 @@ func TestParseSourceConfig(t *testing.T) {
 
 					if s.expectValid {
 						require.False(t, hasWant, "valid config must not include # wantErr: directive")
-						parsed, err := ParseSourceConfig(ctx, fileContent, metrics.AcquisitionMetricsLevelNone, &hub)
+						parsed, err := ParseSourceConfig(ctx, fileContent, metrics.AcquisitionMetricsLevelNone, &hub, nil)
 						require.NoError(t, err)
 						require.NotNil(t, parsed)
 						if schema != "" {
@@ -155,7 +155,7 @@ func TestParseSourceConfig(t *testing.T) {
 					require.True(t, hasWant, "invalid config must include '# wantErr: <exact error>'")
 					require.NotEmpty(t, wantErr, "wantErr directive found but empty")
 
-					parsed, err := ParseSourceConfig(ctx, fileContent, metrics.AcquisitionMetricsLevelNone, &hub)
+					parsed, err := ParseSourceConfig(ctx, fileContent, metrics.AcquisitionMetricsLevelNone, &hub, nil)
 					require.Error(t, err, "got no error, expected %q", wantErr)
 					require.Nil(t, parsed)
 					assert.Equal(t, wantErr, err.Error())

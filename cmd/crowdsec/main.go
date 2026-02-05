@@ -69,13 +69,23 @@ func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config, hub *cwhub.H
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
 		flags.Labels["type"] = flags.SingleFileType
 
-		ds, err := acquisition.LoadAcquisitionFromDSN(ctx, flags.OneShotDSN, flags.Labels, flags.Transform, hub)
+		var clientConfig *csconfig.LocalApiClientCfg
+		if cConfig.API != nil {
+			clientConfig = cConfig.API.Client
+		}
+
+		ds, err := acquisition.LoadAcquisitionFromDSN(ctx, flags.OneShotDSN, flags.Labels, flags.Transform, hub, clientConfig)
 		if err != nil {
 			return nil, err
 		}
 		dataSources = append(dataSources, ds)
 	} else {
-		dss, err := acquisition.LoadAcquisitionFromFiles(ctx, cConfig.Crowdsec, cConfig.Prometheus, hub)
+		var clientConfig *csconfig.LocalApiClientCfg
+		if cConfig.API != nil {
+			clientConfig = cConfig.API.Client
+		}
+
+		dss, err := acquisition.LoadAcquisitionFromFiles(ctx, cConfig.Crowdsec, cConfig.Prometheus, hub, clientConfig)
 		if err != nil {
 			return nil, err
 		}

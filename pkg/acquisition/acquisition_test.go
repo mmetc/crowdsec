@@ -190,7 +190,7 @@ filename: foo.log
 			err := yaml.Unmarshal([]byte(tc.String), &common)
 			require.NoError(t, err)
 			hub := cwhub.Hub{}
-			ds, err := DataSourceConfigure(ctx, common, []byte(tc.String), metrics.AcquisitionMetricsLevelNone, &hub)
+			ds, err := DataSourceConfigure(ctx, common, []byte(tc.String), metrics.AcquisitionMetricsLevelNone, &hub, nil)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 
 			if tc.ExpectedError != "" {

@@ -14,7 +14,6 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -145,7 +144,7 @@ func (a *apic) GetUsageMetrics(ctx context.Context) (*models.AllMetrics, []int, 
 	}
 
 	// FIXME: all of this should only be done once on startup/reload
-	consoleOptions := strings.Join(csconfig.GetConfig().API.Server.ConsoleConfig.EnabledOptions(), ",")
+	consoleOptions := strings.Join(a.consoleConfig.EnabledOptions(), ",")
 	allMetrics.Lapi = &models.LapiMetrics{
 		ConsoleOptions: models.ConsoleOptions{
 			consoleOptions,
