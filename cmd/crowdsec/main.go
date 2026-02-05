@@ -66,13 +66,13 @@ func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 }
 
 func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config, hub *cwhub.Hub) ([]acquisitionTypes.DataSource, error) {
+	var clientConfig *csconfig.LocalApiClientCfg
+	if cConfig.API != nil {
+		clientConfig = cConfig.API.Client
+	}
+
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
 		flags.Labels["type"] = flags.SingleFileType
-
-		var clientConfig *csconfig.LocalApiClientCfg
-		if cConfig.API != nil {
-			clientConfig = cConfig.API.Client
-		}
 
 		ds, err := acquisition.LoadAcquisitionFromDSN(ctx, flags.OneShotDSN, flags.Labels, flags.Transform, hub, clientConfig)
 		if err != nil {
@@ -80,11 +80,6 @@ func LoadAcquisition(ctx context.Context, cConfig *csconfig.Config, hub *cwhub.H
 		}
 		dataSources = append(dataSources, ds)
 	} else {
-		var clientConfig *csconfig.LocalApiClientCfg
-		if cConfig.API != nil {
-			clientConfig = cConfig.API.Client
-		}
-
 		dss, err := acquisition.LoadAcquisitionFromFiles(ctx, cConfig.Crowdsec, cConfig.Prometheus, hub, clientConfig)
 		if err != nil {
 			return nil, err
