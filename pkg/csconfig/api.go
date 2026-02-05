@@ -424,7 +424,7 @@ func (c *Config) LoadAPIServer(inCli bool, skipOnlineCreds bool) error {
 	}
 
 	if c.API.Server.ConsoleConfigPath == "" {
-		c.API.Server.ConsoleConfigPath = DefaultConsoleConfigFilePath
+		c.API.Server.ConsoleConfigPath = DefaultConfigPath("console.yaml")
 	}
 
 	if err := c.API.Server.LoadConsoleConfig(); err != nil {

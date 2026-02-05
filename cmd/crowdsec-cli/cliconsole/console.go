@@ -104,8 +104,16 @@ func (cli *cliConsole) enroll(ctx context.Context, key string, name string, over
 		return err
 	}
 
+	helpTexts := map[string]string{
+		csconfig.SEND_CUSTOM_SCENARIOS:  "Forward alerts from custom scenarios to the console",
+		csconfig.SEND_MANUAL_SCENARIOS:  "Forward manual decisions to the console",
+		csconfig.SEND_TAINTED_SCENARIOS: "Forward alerts from tainted scenarios to the console",
+		csconfig.SEND_CONTEXT:           "Forward context with alerts to the console",
+		csconfig.CONSOLE_MANAGEMENT:     "Receive decisions from console",
+	}
+
 	for _, opt := range opts {
-		log.Infof("Enabled %s : %s", opt, csconfig.CONSOLE_CONFIGS_HELP[opt])
+		log.Infof("Enabled %s : %s", opt, helpTexts[opt])
 	}
 
 	log.Info("Watcher successfully enrolled. Visit https://app.crowdsec.net to accept it.")
@@ -115,18 +123,20 @@ func (cli *cliConsole) enroll(ctx context.Context, key string, name string, over
 }
 
 func optionFilterEnable(opts []string, enableOpts []string) ([]string, error) {
+	validOptions := []string{csconfig.SEND_CUSTOM_SCENARIOS, csconfig.SEND_MANUAL_SCENARIOS, csconfig.SEND_TAINTED_SCENARIOS, csconfig.SEND_CONTEXT, csconfig.CONSOLE_MANAGEMENT}
+
 	if len(enableOpts) == 0 {
 		return opts, nil
 	}
 
 	for _, opt := range enableOpts {
 		if opt == "all" {
-			opts = append(opts, csconfig.CONSOLE_CONFIGS...)
+			opts = append(opts, validOptions...)
 			// keep validating the rest of the option names
 			continue
 		}
 
-		if !slices.Contains(csconfig.CONSOLE_CONFIGS, opt) {
+		if !slices.Contains(validOptions, opt) {
 			return nil, fmt.Errorf("option %s doesn't exist", opt)
 		}
 
@@ -139,6 +149,8 @@ func optionFilterEnable(opts []string, enableOpts []string) ([]string, error) {
 }
 
 func optionFilterDisable(opts []string, disableOpts []string) ([]string, error) {
+	validOptions := []string{csconfig.SEND_CUSTOM_SCENARIOS, csconfig.SEND_MANUAL_SCENARIOS, csconfig.SEND_TAINTED_SCENARIOS, csconfig.SEND_CONTEXT, csconfig.CONSOLE_MANAGEMENT}
+
 	if len(disableOpts) == 0 {
 		return opts, nil
 	}
@@ -150,7 +162,7 @@ func optionFilterDisable(opts []string, disableOpts []string) ([]string, error) 
 			continue
 		}
 
-		if !slices.Contains(csconfig.CONSOLE_CONFIGS, opt) {
+		if !slices.Contains(validOptions, opt) {
 			return nil, fmt.Errorf("option %s doesn't exist", opt)
 		}
 
@@ -192,7 +204,14 @@ cscli console enroll --name [instance_name] --tags [tag_1] --tags [tag_2] YOUR-E
 cscli console enroll --enable console_management YOUR-ENROLL-KEY
 cscli console enroll --disable context YOUR-ENROLL-KEY
 
-valid options are : %s,all (see 'cscli console status' for details)`, strings.Join(csconfig.CONSOLE_CONFIGS, ",")),
+valid options are : %s,all (see 'cscli console status' for details)`, strings.Join(
+			[]string{
+				csconfig.SEND_CUSTOM_SCENARIOS,
+				csconfig.SEND_MANUAL_SCENARIOS,
+				csconfig.SEND_TAINTED_SCENARIOS,
+				csconfig.SEND_CONTEXT,
+				csconfig.CONSOLE_MANAGEMENT,
+			}, ",")),
 		Args:              args.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -225,17 +244,25 @@ valid options are : %s,all (see 'cscli console status' for details)`, strings.Jo
 func (cli *cliConsole) newEnableCmd() *cobra.Command {
 	var enableAll bool
 
+	allOptions := []string{
+		csconfig.SEND_CUSTOM_SCENARIOS,
+		csconfig.SEND_MANUAL_SCENARIOS,
+		csconfig.SEND_TAINTED_SCENARIOS,
+		csconfig.SEND_CONTEXT,
+		csconfig.CONSOLE_MANAGEMENT,
+	}
+
 	cmd := &cobra.Command{
 		Use:     "enable [option]...",
 		Short:   "Enable a console option",
 		Example: "sudo cscli console enable tainted",
 		Long: `
 Enable given information push to the central API. Allows to empower the console`,
-		ValidArgs:         csconfig.CONSOLE_CONFIGS,
+		ValidArgs:         allOptions,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
 			if enableAll {
-				if err := cli.setConsoleOpts(csconfig.CONSOLE_CONFIGS, true); err != nil {
+				if err := cli.setConsoleOpts(allOptions, true); err != nil {
 					return err
 				}
 
@@ -267,17 +294,25 @@ Enable given information push to the central API. Allows to empower the console`
 func (cli *cliConsole) newDisableCmd() *cobra.Command {
 	var disableAll bool
 
+	allOptions := []string{
+		csconfig.SEND_CUSTOM_SCENARIOS,
+		csconfig.SEND_MANUAL_SCENARIOS,
+		csconfig.SEND_TAINTED_SCENARIOS,
+		csconfig.SEND_CONTEXT,
+		csconfig.CONSOLE_MANAGEMENT,
+	}
+
 	cmd := &cobra.Command{
 		Use:     "disable [option]",
 		Short:   "Disable a console option",
 		Example: "sudo cscli console disable tainted",
 		Long: `
 Disable given information push to the central API.`,
-		ValidArgs:         csconfig.CONSOLE_CONFIGS,
+		ValidArgs:         allOptions,
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
 			if disableAll {
-				if err := cli.setConsoleOpts(csconfig.CONSOLE_CONFIGS, false); err != nil {
+				if err := cli.setConsoleOpts(allOptions, false); err != nil {
 					return err
 				}
 
@@ -376,7 +411,7 @@ func (cli *cliConsole) dumpConfig() error {
 	}
 
 	if serverCfg.ConsoleConfigPath == "" {
-		serverCfg.ConsoleConfigPath = csconfig.DefaultConsoleConfigFilePath
+		serverCfg.ConsoleConfigPath = csconfig.DefaultConfigPath("console.yaml")
 		log.Debugf("Empty console_path, defaulting to %s", serverCfg.ConsoleConfigPath)
 	}
 
