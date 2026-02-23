@@ -397,6 +397,7 @@ func (i *Item) checkSubItemVersions() []string {
 		}
 
 		if !sub.State.IsInstalled() {
+			// parent install state is already verified above
 			i.addTaint(sub)
 			warn = append(warn, fmt.Sprintf("%s is tainted by missing %s", i.Name, sub.FQName()))
 
