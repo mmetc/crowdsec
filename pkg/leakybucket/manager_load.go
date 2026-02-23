@@ -41,7 +41,7 @@ type BucketSpec struct {
 	Labels              map[string]any             `yaml:"labels"`              // Labels is K:V list aiming at providing context the overflow
 	Blackhole           string                     `yaml:"blackhole,omitempty"` // Blackhole is a duration that, if present, will prevent same bucket partition to overflow more often than $duration
 	ScopeType           ScopeType                  `yaml:"scope,omitempty"`     // to enforce a different remediation than blocking an IP. Will default this to IP
-	Reprocess           bool                       `yaml:"reprocess"`           // Reprocess, if true, will for the bucket to be re-injected into processing chain
+	Reprocess           bool                       `yaml:"reprocess"`           // Reprocess, if true, will force the bucket to be re-injected into processing chain
 	Data                []*enrichment.DataProvider `yaml:"data,omitempty"`
 	ConditionalOverflow string                     `yaml:"condition"`           // condition if present, is an expression that must return true for the bucket to overflow
 	CacheSize           int                        `yaml:"cache_size"`          // CacheSize, if > 0, limits the size of in-memory cache of the bucket

@@ -203,7 +203,7 @@ func (w *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Ent
 
 	cConfig := csconfig.GetConfig()
 	if cConfig.Crowdsec == nil {
-		return errors.New("crowdsec configuration not loaded while initializing appsec - this is a bug, plese report")
+		return errors.New("crowdsec configuration not loaded while initializing appsec - this is a bug, please report")
 	}
 
 	alertCtx, err := alertcontext.NewAlertContext(cConfig.Crowdsec.ContextToSend, cConfig.Crowdsec.ConsoleContextValueLength)
