@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"slices"
 	"strconv"
+	"sync/atomic"
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
@@ -19,7 +20,7 @@ import (
 
 const MaxContextValueLen = 4000
 
-var alertContext = Context{}
+var alertContextStore atomic.Pointer[Context]
 
 type Context struct {
 	ContextToSend         map[string][]string
@@ -53,7 +54,7 @@ func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 		valueLength = MaxContextValueLen
 	}
 
-	alertContext = Context{
+	alertContext := &Context{
 		ContextToSend:         contextToSend,
 		ContextValueLen:       valueLength,
 		ContextToSendCompiled: make(map[string][]*vm.Program),
@@ -83,13 +84,24 @@ func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 		}
 	}
 
+	alertContextStore.Store(alertContext)
+
 	return nil
+}
+
+func getAlertContext() *Context {
+	if alertContext := alertContextStore.Load(); alertContext != nil {
+		return alertContext
+	}
+
+	return &Context{}
 }
 
 // Truncate the context map to fit in the context value length
 func TruncateContextMap(contextMap map[string][]string, contextValueLen int) ([]*models.MetaItems0, []error) {
 	metas := make([]*models.MetaItems0, 0)
 	errors := make([]error, 0)
+	alertContext := getAlertContext()
 
 	for key, values := range contextMap {
 		if len(values) == 0 {
@@ -146,6 +158,7 @@ func TruncateContext(values []string, contextValueLen int) (string, error) {
 
 func EvalAlertContextRules(evt pipeline.Event, match *pipeline.MatchedRule, request *http.Request, tmpContext map[string][]string) []error {
 	var errors []error
+	alertContext := getAlertContext()
 
 	// if we're evaluating context for appsec event, match and request will be present.
 	// otherwise, only evt will be.
@@ -214,6 +227,7 @@ func EvalAlertContextRules(evt pipeline.Event, match *pipeline.MatchedRule, requ
 // Iterate over the individual appsec matched rules to create the needed alert context.
 func AppsecEventToContext(event pipeline.AppsecEvent, request *http.Request) (models.Meta, []error) {
 	var errors []error
+	alertContext := getAlertContext()
 
 	tmpContext := make(map[string][]string)
 
@@ -234,6 +248,7 @@ func AppsecEventToContext(event pipeline.AppsecEvent, request *http.Request) (mo
 // Iterate over the individual events to create the needed alert context.
 func EventToContext(events []pipeline.Event) (models.Meta, []error) {
 	var errors []error
+	alertContext := getAlertContext()
 
 	tmpContext := make(map[string][]string)
 
