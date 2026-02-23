@@ -21,6 +21,11 @@ import (
 const MaxContextValueLen = 4000
 
 var alertContextStore atomic.Pointer[Context]
+var defaultAlertContext = &Context{
+	ContextToSend:         make(map[string][]string),
+	ContextValueLen:       MaxContextValueLen,
+	ContextToSendCompiled: make(map[string][]*vm.Program),
+}
 
 type Context struct {
 	ContextToSend         map[string][]string
@@ -90,11 +95,11 @@ func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 }
 
 func getAlertContext() *Context {
-	if alertContext := alertContextStore.Load(); alertContext != nil {
-		return alertContext
+	if ctx := alertContextStore.Load(); ctx != nil {
+		return ctx
 	}
 
-	return &Context{}
+	return defaultAlertContext
 }
 
 // Truncate the context map to fit in the context value length
