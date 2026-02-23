@@ -379,13 +379,6 @@ func (i *Item) versionStatus() int {
 	return versionFuture
 }
 
-// validPath returns true if the (relative) path is allowed for the item.
-// dirNname: the directory name (ie. crowdsecurity).
-// fileName: the filename (ie. apache2-logs.yaml).
-func (i *Item) validPath(dirName, fileName string) bool {
-	return (dirName+"/"+fileName == i.Name+".yaml") || (dirName+"/"+fileName == i.Name+".yml")
-}
-
 // FQName returns the fully qualified name of the item (ie. parsers:crowdsecurity/apache2-logs).
 func (i *Item) FQName() string {
 	return fmt.Sprintf("%s:%s", i.Type, i.Name)
