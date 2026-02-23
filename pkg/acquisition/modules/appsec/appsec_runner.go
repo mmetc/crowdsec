@@ -14,6 +14,7 @@ import (
 	"github.com/corazawaf/coraza/v3"
 	corazatypes "github.com/corazawaf/coraza/v3/types"
 
+	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
@@ -29,6 +30,7 @@ type AppsecRunner struct {
 	AppsecInbandEngine     coraza.WAF
 	AppsecOutbandEngine    coraza.WAF
 	Labels                 map[string]string
+	AlertContext           *alertcontext.Context
 	logger                 *log.Entry
 	appsecAllowlistsClient *allowlists.AppsecAllowlist
 }
@@ -295,7 +297,7 @@ func (r *AppsecRunner) handleInBandInterrupt(state *appsec.AppsecRequestState, r
 
 	// Should the in band match trigger an overflow ?
 	if state.Response.SendAlert {
-		appsecOvlfw, err := AppsecEventGeneration(evt, request.HTTPRequest)
+		appsecOvlfw, err := AppsecEventGeneration(evt, request.HTTPRequest, r.AlertContext)
 		if err != nil {
 			r.logger.Errorf("unable to generate appsec event : %s", err)
 			return
@@ -359,7 +361,7 @@ func (r *AppsecRunner) handleOutBandInterrupt(state *appsec.AppsecRequestState, 
 	// The event can be modified by the parsers, which might cause a concurrent map read/write
 	// Should the match trigger an overflow ?
 	if state.Response.SendAlert {
-		appsecOvlfw, err := AppsecEventGeneration(evt, request.HTTPRequest)
+		appsecOvlfw, err := AppsecEventGeneration(evt, request.HTTPRequest, r.AlertContext)
 		if err != nil {
 			r.logger.Errorf("unable to generate appsec event : %s", err)
 			return

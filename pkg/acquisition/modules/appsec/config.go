@@ -17,9 +17,11 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/allowlists"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 )
 
@@ -199,6 +201,16 @@ func (w *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Ent
 
 	w.appsecAllowlistClient = allowlists.NewAppsecAllowlist(w.logger)
 
+	cConfig := csconfig.GetConfig()
+	if cConfig.Crowdsec == nil {
+		return errors.New("crowdsec configuration not loaded while initializing appsec - this is a bug, plese report")
+	}
+
+	alertCtx, err := alertcontext.NewAlertContext(cConfig.Crowdsec.ContextToSend, cConfig.Crowdsec.ConsoleContextValueLength)
+	if err != nil {
+		return fmt.Errorf("unable to load alert context: %w", err)
+	}
+
 	for nbRoutine := range w.config.Routines {
 		appsecRunnerUUID := uuid.New().String()
 		// we copy AppsecRuntime for each runner
@@ -210,6 +222,7 @@ func (w *Source) Configure(_ context.Context, yamlConfig []byte, logger *log.Ent
 			logger:                 w.logger.WithField("runner_uuid", appsecRunnerUUID),
 			AppsecRuntime:          &wrt,
 			Labels:                 w.config.Labels,
+			AlertContext:           alertCtx,
 			appsecAllowlistsClient: w.appsecAllowlistClient,
 		}
 

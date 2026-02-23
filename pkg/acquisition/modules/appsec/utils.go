@@ -102,7 +102,7 @@ func formatCRSMatch(vars map[string]string, hasInBandMatches bool, hasOutBandMat
 	return msg
 }
 
-func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeline.Event, error) {
+func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request, alertCtx *alertcontext.Context) (*pipeline.Event, error) {
 	// if the request didn't trigger inband rules or out-of-band rules, we don't want to generate an event to LAPI/CAPI
 	if !inEvt.Appsec.HasInBandMatches && !inEvt.Appsec.HasOutBandMatches {
 		return nil, nil
@@ -179,7 +179,7 @@ func AppsecEventGeneration(inEvt pipeline.Event, request *http.Request) (*pipeli
 		alert.Events = append(alert.Events, &event)
 	}
 
-	metas, errors := alertcontext.AppsecEventToContext(inEvt.Appsec, request)
+	metas, errors := alertCtx.AppsecEventToContext(inEvt.Appsec, request)
 	if len(errors) > 0 {
 		for _, err := range errors {
 			log.Errorf("failed to generate appsec context: %s", err)

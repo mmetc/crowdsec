@@ -11,7 +11,6 @@ import (
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -350,7 +349,7 @@ func NewAlert(leaky *Leaky, queue *pipeline.Queue) (pipeline.RuntimeAlert, error
 
 	var warnings []error
 
-	apiAlert.Meta, warnings = alertcontext.EventToContext(leaky.Queue.GetQueue())
+	apiAlert.Meta, warnings = leaky.Factory.AlertContext.EventToContext(leaky.Queue.GetQueue())
 	for _, w := range warnings {
 		log.Warningf("while extracting context from bucket %s : %s", leaky.Factory.Spec.Name, w)
 	}

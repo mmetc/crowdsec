@@ -33,7 +33,7 @@ func TestNewAlertContext(t *testing.T) {
 
 	for _, test := range tests {
 		fmt.Printf("Running test '%s'\n", test.name)
-		err := NewAlertContext(test.contextToSend, test.valueLength)
+		_, err := NewAlertContext(test.contextToSend, test.valueLength)
 		require.ErrorIs(t, err, test.expectedErr)
 	}
 }
@@ -196,10 +196,10 @@ func TestEventToContext(t *testing.T) {
 
 	for _, test := range tests {
 		fmt.Printf("Running test '%s'\n", test.name)
-		err := NewAlertContext(test.contextToSend, test.valueLength)
+		alertCtx, err := NewAlertContext(test.contextToSend, test.valueLength)
 		require.NoError(t, err)
 
-		metas, _ := EventToContext(test.events)
+		metas, _ := alertCtx.EventToContext(test.events)
 		assert.ElementsMatch(t, test.expectedResult, metas)
 	}
 }
@@ -386,15 +386,13 @@ func TestAppsecEventToContext(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		// reset cache
-		alertContextStore.Store(nil)
-		// compile
-		if err := NewAlertContext(test.contextToSend, 100); err != nil {
+		alertCtx, err := NewAlertContext(test.contextToSend, 100)
+		if err != nil {
 			t.Fatalf("failed to compile %s: %s", test.name, err)
 		}
 		// run
 
-		metas, errors := AppsecEventToContext(test.match, test.req)
+		metas, errors := alertCtx.AppsecEventToContext(test.match, test.req)
 		assert.Len(t, errors, test.expectedErrLen)
 		assert.ElementsMatch(t, test.expectedResult, metas)
 	}
@@ -434,12 +432,12 @@ func TestEvalAlertContextRules(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			contextDict := make(map[string][]string)
 
-			alertContextStore.Store(nil)
-			if err := NewAlertContext(test.contextToSend, 100); err != nil {
+			alertCtx, err := NewAlertContext(test.contextToSend, 100)
+			if err != nil {
 				t.Fatalf("failed to compile %s: %s", test.name, err)
 			}
 
-			errs := EvalAlertContextRules(test.event, &test.match, test.req, contextDict)
+			errs := alertCtx.EvalAlertContextRules(test.event, &test.match, test.req, contextDict)
 			assert.Len(t, errs, test.expectedErrLen)
 			assert.Equal(t, test.expectedResult, contextDict)
 		})

@@ -41,15 +41,15 @@ type BucketSpec struct {
 	Labels              map[string]any             `yaml:"labels"`              // Labels is K:V list aiming at providing context the overflow
 	Blackhole           string                     `yaml:"blackhole,omitempty"` // Blackhole is a duration that, if present, will prevent same bucket partition to overflow more often than $duration
 	ScopeType           ScopeType                  `yaml:"scope,omitempty"`     // to enforce a different remediation than blocking an IP. Will default this to IP
-	Reprocess           bool                       `yaml:"reprocess"`       // Reprocess, if true, will for the bucket to be re-injected into processing chain
+	Reprocess           bool                       `yaml:"reprocess"`           // Reprocess, if true, will for the bucket to be re-injected into processing chain
 	Data                []*enrichment.DataProvider `yaml:"data,omitempty"`
-	ConditionalOverflow string                     `yaml:"condition"`       // condition if present, is an expression that must return true for the bucket to overflow
-	CacheSize           int                        `yaml:"cache_size"`      // CacheSize, if > 0, limits the size of in-memory cache of the bucket
+	ConditionalOverflow string                     `yaml:"condition"`           // condition if present, is an expression that must return true for the bucket to overflow
+	CacheSize           int                        `yaml:"cache_size"`          // CacheSize, if > 0, limits the size of in-memory cache of the bucket
 	CancelOnFilter      string                     `yaml:"cancel_on,omitempty"` // a filter that, if matched, kills the bucket
 	BayesianPrior       float32                    `yaml:"bayesian_prior"`
 	BayesianThreshold   float32                    `yaml:"bayesian_threshold"`
 	BayesianConditions  []RawBayesianCondition     `yaml:"bayesian_conditions"` // conditions for the bayesian bucket
-	OverflowFilter      string                     `yaml:"overflow_filter"` // OverflowFilter if present, is a filter that must return true for the overflow to go through
+	OverflowFilter      string                     `yaml:"overflow_filter"`     // OverflowFilter if present, is a filter that must return true for the overflow to go through
 	Duration            string                     `yaml:"duration"`            // Duration allows 'counter' buckets to have a fixed life-time
 	ScenarioVersion     string                     `yaml:"version,omitempty"`
 }
@@ -58,19 +58,20 @@ type BucketSpec struct {
 type BucketFactory struct {
 	Spec BucketSpec
 
-	logger              *log.Entry          // logger is bucket-specific logger (used by Debug as well)
-	BucketName          string
-	Filename            string
-	RunTimeFilter       *vm.Program         `json:"-"`
-	RunTimeGroupBy      *vm.Program         `json:"-"`
-	DataDir             string
-	leakspeed           time.Duration       // internal representation of `Leakspeed`
-	duration            time.Duration       // internal representation of `Duration`
-	ret                 chan pipeline.Event // the bucket-specific output chan for overflows
-	processors          []Processor         // processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
-	scenarioHash        string
-	Simulated           bool                // Set to true if the scenario instantiating the bucket was in the exclusion list
-	orderEvent          bool
+	logger         *log.Entry // logger is bucket-specific logger (used by Debug as well)
+	BucketName     string
+	Filename       string
+	RunTimeFilter  *vm.Program `json:"-"`
+	RunTimeGroupBy *vm.Program `json:"-"`
+	DataDir        string
+	leakspeed      time.Duration       // internal representation of `Leakspeed`
+	duration       time.Duration       // internal representation of `Duration`
+	ret            chan pipeline.Event // the bucket-specific output chan for overflows
+	processors     []Processor         // processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
+	scenarioHash   string
+	Simulated      bool // Set to true if the scenario instantiating the bucket was in the exclusion list
+	orderEvent     bool
+	AlertContext   *alertcontext.Context
 }
 
 // we use one NameGenerator for all the future buckets
@@ -201,8 +202,12 @@ func LoadBuckets(
 		allFactories = append(allFactories, factories...)
 	}
 
-	if err := alertcontext.NewAlertContext(cscfg.ContextToSend, cscfg.ConsoleContextValueLength); err != nil {
+	alertCtx, err := alertcontext.NewAlertContext(cscfg.ContextToSend, cscfg.ConsoleContextValueLength)
+	if err != nil {
 		return nil, nil, fmt.Errorf("unable to load alert context: %w", err)
+	}
+	for i := range allFactories {
+		allFactories[i].AlertContext = alertCtx
 	}
 
 	log.Infof("Loaded %d scenarios", len(allFactories))
