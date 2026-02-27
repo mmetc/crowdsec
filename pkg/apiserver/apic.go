@@ -18,7 +18,6 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
@@ -61,10 +60,10 @@ type apic struct {
 	AlertsAddChan             chan []*models.Alert
 
 	mu            sync.Mutex
-	pushTomb      tomb.Tomb
-	pullTomb      tomb.Tomb
 	metricsCancel context.CancelFunc
 	metricsDone   chan struct{}
+	stopChan      chan struct{}
+	stopOnce      sync.Once
 	startup       bool
 	consoleConfig *csconfig.ConsoleConfig
 	isPulling     chan bool
@@ -194,8 +193,7 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		dbClient:                  dbClient,
 		mu:                        sync.Mutex{},
 		startup:                   true,
-		pullTomb:                  tomb.Tomb{},
-		pushTomb:                  tomb.Tomb{},
+		stopChan:                  make(chan struct{}),
 		consoleConfig:             consoleConfig,
 		pullInterval:              pullIntervalDefault,
 		pullIntervalFirst:         randomDuration(pullIntervalDefault, pullIntervalDelta),
@@ -288,23 +286,28 @@ func (a *apic) Push(ctx context.Context) error {
 	var cache models.AddSignalsRequest
 
 	ticker := time.NewTicker(a.pushIntervalFirst)
+	defer ticker.Stop()
 
 	log.Infof("Start push to CrowdSec Central API (interval: %s once, then %s)", a.pushIntervalFirst.Round(time.Second), a.pushInterval)
 
+	flushCache := func() error {
+		log.Infof("stopping push routine, sending cache (%d elements) before exiting", len(cache))
+
+		if len(cache) == 0 {
+			return nil
+		}
+
+		go a.Send(context.WithoutCancel(ctx), &cache)
+
+		return nil
+	}
+
 	for {
 		select {
-		case <-a.pushTomb.Dying(): // if one apic routine is dying, do we kill the others?
-			a.pullTomb.Kill(nil)
-			a.StopMetrics()
-			log.Infof("push tomb is dying, sending cache (%d elements) before exiting", len(cache))
-
-			if len(cache) == 0 {
-				return nil
-			}
-
-			go a.Send(ctx, &cache)
-
-			return nil
+		case <-ctx.Done():
+			return flushCache()
+		case <-a.stopChan:
+			return flushCache()
 		case <-ticker.C:
 			ticker.Reset(a.pushInterval)
 
@@ -1038,6 +1041,14 @@ func (a *apic) Pull(ctx context.Context) error {
 	toldOnce := false
 
 	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-a.stopChan:
+			return nil
+		default:
+		}
+
 		scenario, err := a.FetchScenariosListFromDB(ctx)
 		if err != nil {
 			log.Errorf("unable to fetch scenarios from db: %s", err)
@@ -1062,6 +1073,7 @@ func (a *apic) Pull(ctx context.Context) error {
 
 	log.Infof("Start pull from CrowdSec Central API (interval: %s once, then %s)", a.pullIntervalFirst.Round(time.Second), a.pullInterval)
 	ticker := time.NewTicker(a.pullIntervalFirst)
+	defer ticker.Stop()
 
 	for {
 		select {
@@ -1072,10 +1084,9 @@ func (a *apic) Pull(ctx context.Context) error {
 				log.Errorf("capi pull top: %s", err)
 				continue
 			}
-		case <-a.pullTomb.Dying(): // if one apic routine is dying, do we kill the others?
-			a.StopMetrics()
-			a.pushTomb.Kill(nil)
-
+		case <-ctx.Done():
+			return nil
+		case <-a.stopChan:
 			return nil
 		}
 	}
@@ -1134,8 +1145,10 @@ func (a *apic) StopMetrics() {
 }
 
 func (a *apic) Shutdown() {
-	a.pushTomb.Kill(nil)
-	a.pullTomb.Kill(nil)
+	a.stopOnce.Do(func() {
+		close(a.stopChan)
+	})
+
 	a.StopMetrics()
 }
 

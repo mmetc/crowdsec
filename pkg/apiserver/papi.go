@@ -10,7 +10,6 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -65,7 +64,6 @@ type Papi struct {
 	apiClient     *apiclient.ApiClient
 	Channels      *OperationChannels
 	mu            sync.Mutex
-	pullTomb      tomb.Tomb
 	syncCancel    context.CancelFunc
 	syncDone      chan struct{}
 	SyncInterval  time.Duration
@@ -114,7 +112,6 @@ func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.Cons
 		Channels:      channels,
 		SyncInterval:  SyncInterval,
 		mu:            sync.Mutex{},
-		pullTomb:      tomb.Tomb{},
 		apiClient:     apic.apiClient,
 		apic:          apic,
 		consoleConfig: consoleConfig,

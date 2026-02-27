@@ -17,7 +17,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-co-op/gocron/v2"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
@@ -41,7 +40,6 @@ type APIServer struct {
 	httpServer     *http.Server
 	apic           *apic
 	papi           *Papi
-	httpServerTomb tomb.Tomb
 }
 
 func isBrokenConnection(maybeError any) bool {
@@ -240,7 +238,6 @@ func NewServer(ctx context.Context, config *csconfig.LocalApiServerCfg, accessLo
 		router:         router,
 		apic:           apiClient,
 		papi:           papiClient,
-		httpServerTomb: tomb.Tomb{},
 	}, nil
 }
 
@@ -276,23 +273,23 @@ func (s *APIServer) papiPull(ctx context.Context) error {
 }
 
 func (s *APIServer) initAPIC(ctx context.Context) {
-	s.apic.pushTomb.Go(func() error {
+	go func() {
 		defer trace.ReportPanic()
-		return s.apicPush(ctx)
-	})
-	s.apic.pullTomb.Go(func() error {
+		_ = s.apicPush(ctx)
+	}()
+	go func() {
 		defer trace.ReportPanic()
-		return s.apicPull(ctx)
-	})
+		_ = s.apicPull(ctx)
+	}()
 
 	if s.apic.apiClient.IsEnrolled() {
 		if s.papi != nil {
 			if s.papi.URL != "" {
 				log.Info("Starting PAPI decision receiver")
-				s.papi.pullTomb.Go(func() error {
+				go func() {
 					defer trace.ReportPanic()
-					return s.papiPull(ctx)
-				})
+					_ = s.papiPull(ctx)
+				}()
 				s.papi.StartSync(ctx)
 			} else {
 				log.Warnf("papi_url is not set in online_api_credentials.yaml, can't synchronize with the console. Run cscli console enable console_management to add it.")
@@ -326,11 +323,7 @@ func (s *APIServer) Run(ctx context.Context, apiReady chan bool) error {
 		s.initAPIC(ctx)
 	}
 
-	s.httpServerTomb.Go(func() error {
-		return s.listenAndServeLAPI(ctx, apiReady)
-	})
-
-	if err := s.httpServerTomb.Wait(); err != nil {
+	if err := s.listenAndServeLAPI(ctx, apiReady); err != nil {
 		return fmt.Errorf("local API server stopped with error: %w", err)
 	}
 
@@ -366,7 +359,10 @@ func (s *APIServer) listenAndServeLAPI(ctx context.Context, apiReady chan bool) 
 
 		switch {
 		case errors.Is(err, http.ErrServerClosed):
-			break
+			select {
+			case serverError <- nil:
+			default:
+			}
 		case err != nil:
 			serverError <- err
 		}
@@ -415,10 +411,10 @@ func (s *APIServer) listenAndServeLAPI(ctx context.Context, apiReady chan bool) 
 	select {
 	case err := <-serverError:
 		return err
-	case <-s.httpServerTomb.Dying():
+	case <-ctx.Done():
 		log.Info("Shutting down API server")
 
-		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
 
 		if err := s.httpServer.Shutdown(ctx); err != nil {
@@ -469,12 +465,6 @@ func (s *APIServer) Shutdown(ctx context.Context) error {
 
 	if pipe, ok := gin.DefaultWriter.(*io.PipeWriter); ok {
 		pipe.Close()
-	}
-
-	s.httpServerTomb.Kill(nil)
-
-	if err := s.httpServerTomb.Wait(); err != nil {
-		return fmt.Errorf("while waiting on httpServerTomb: %w", err)
 	}
 
 	return nil

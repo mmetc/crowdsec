@@ -299,8 +299,6 @@ func (a *apic) SendMetrics(ctx context.Context, stop chan bool) {
 		case <-stop:
 			return
 		case <-ctx.Done():
-			a.pullTomb.Kill(nil)
-			a.pushTomb.Kill(nil)
 			return
 		case <-checkTicker.C:
 			oldIDs := machineIDs
