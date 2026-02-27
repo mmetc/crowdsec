@@ -17,7 +17,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -187,8 +186,7 @@ func TestDSNAcquis(t *testing.T) {
 				}
 			}()
 
-			tmb := tomb.Tomb{}
-			err = f.OneShotAcquisition(ctx, out, &tmb)
+			err = f.OneShot(ctx, out)
 			require.NoError(t, err)
 			time.Sleep(2 * time.Second)
 
@@ -246,7 +244,9 @@ prefix: foo/
 			}
 
 			out := make(chan pipeline.Event)
-			tb := tomb.Tomb{}
+			done := make(chan struct{})
+			streamCtx, cancel := context.WithCancel(ctx)
+			streamErr := make(chan error, 1)
 
 			go func() {
 				for {
@@ -254,21 +254,20 @@ prefix: foo/
 					case s := <-out:
 						fmt.Printf("got line %s\n", s.Line.Raw)
 						linesRead++
-					case <-tb.Dying():
+					case <-done:
 						return
 					}
 				}
 			}()
 
-			err = f.StreamingAcquisition(ctx, out, &tb)
-			if err != nil {
-				t.Fatalf("unexpected error: %s", err.Error())
-			}
+			go func() {
+				streamErr <- f.Stream(streamCtx, out)
+			}()
 
 			time.Sleep(2 * time.Second)
-			tb.Kill(nil)
-			err = tb.Wait()
-			require.NoError(t, err)
+			cancel()
+			require.NoError(t, <-streamErr)
+			close(done)
 			assert.Equal(t, test.expectedCount, linesRead)
 		})
 	}
@@ -342,7 +341,9 @@ sqs_name: test
 			}
 
 			out := make(chan pipeline.Event)
-			tb := tomb.Tomb{}
+			done := make(chan struct{})
+			streamCtx, cancel := context.WithCancel(ctx)
+			streamErr := make(chan error, 1)
 
 			go func() {
 				for {
@@ -350,22 +351,20 @@ sqs_name: test
 					case s := <-out:
 						fmt.Printf("got line %s\n", s.Line.Raw)
 						linesRead++
-					case <-tb.Dying():
+					case <-done:
 						return
 					}
 				}
 			}()
 
-			err = f.StreamingAcquisition(ctx, out, &tb)
-			if err != nil {
-				t.Fatalf("unexpected error: %s", err.Error())
-			}
+			go func() {
+				streamErr <- f.Stream(streamCtx, out)
+			}()
 
 			time.Sleep(2 * time.Second)
-			tb.Kill(nil)
-
-			err = tb.Wait()
-			require.NoError(t, err)
+			cancel()
+			require.NoError(t, <-streamErr)
+			close(done)
 			assert.Equal(t, test.expectedCount, linesRead)
 		})
 	}

@@ -20,7 +20,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -67,26 +67,28 @@ const (
 	SQSFormatSNS            = "sns"
 )
 
-func (s *Source) readManager() {
+func (s *Source) readManager(ctx context.Context, out chan pipeline.Event, readerChan <-chan S3Object) {
 	logger := s.logger.WithField("method", "readManager")
 
 	for {
 		select {
-		case <-s.t.Dying():
+		case <-ctx.Done():
 			logger.Infof("Shutting down S3 read manager")
-			s.cancel()
 			return
-		case s3Object := <-s.readerChan:
+		case s3Object, ok := <-readerChan:
+			if !ok {
+				return
+			}
 			logger.Debugf("Reading file %s/%s", s3Object.Bucket, s3Object.Key)
 
-			if err := s.readFile(s3Object.Bucket, s3Object.Key); err != nil {
+			if err := s.readFile(ctx, out, s3Object.Bucket, s3Object.Key); err != nil {
 				logger.Errorf("Error while reading file: %s", err)
 			}
 		}
 	}
 }
 
-func (s *Source) getBucketContent() ([]s3types.Object, error) {
+func (s *Source) getBucketContent(ctx context.Context) ([]s3types.Object, error) {
 	logger := s.logger.WithField("method", "getBucketContent")
 	logger.Debugf("Getting bucket content")
 
@@ -95,7 +97,7 @@ func (s *Source) getBucketContent() ([]s3types.Object, error) {
 	var continuationToken *string
 
 	for {
-		out, err := s.s3Client.ListObjectsV2(s.ctx, &s3.ListObjectsV2Input{
+		out, err := s.s3Client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
 			Bucket:            aws.String(s.Config.BucketName),
 			Prefix:            aws.String(s.Config.Prefix),
 			ContinuationToken: continuationToken,
@@ -120,7 +122,7 @@ func (s *Source) getBucketContent() ([]s3types.Object, error) {
 	return bucketObjects, nil
 }
 
-func (s *Source) listPoll() error {
+func (s *Source) listPoll(ctx context.Context, readerChan chan<- S3Object) error {
 	logger := s.logger.WithField("method", "listPoll")
 	ticker := time.NewTicker(time.Duration(s.Config.PollingInterval) * time.Second)
 	lastObjectDate := time.Now()
@@ -129,14 +131,13 @@ func (s *Source) listPoll() error {
 
 	for {
 		select {
-		case <-s.t.Dying():
+		case <-ctx.Done():
 			logger.Infof("Shutting down list poller")
-			s.cancel()
 			return nil
 		case <-ticker.C:
 			newObject := false
 
-			bucketObjects, err := s.getBucketContent()
+			bucketObjects, err := s.getBucketContent(ctx)
 			if err != nil {
 				logger.Errorf("Error while getting bucket content: %s", err)
 				continue
@@ -161,9 +162,9 @@ func (s *Source) listPoll() error {
 				}
 
 				select {
-				case s.readerChan <- obj:
-				case <-s.t.Dying():
-					logger.Debug("tomb is dying, dropping object send")
+				case readerChan <- obj:
+				case <-ctx.Done():
+					logger.Debug("context canceled, dropping object send")
 					return nil
 				}
 			}
@@ -261,19 +262,18 @@ func (s *Source) extractBucketAndPrefix(message *string) (string, string, error)
 	}
 }
 
-func (s *Source) sqsPoll() error {
+func (s *Source) sqsPoll(ctx context.Context, readerChan chan<- S3Object) error {
 	logger := s.logger.WithField("method", "sqsPoll")
 
 	for {
 		select {
-		case <-s.t.Dying():
+		case <-ctx.Done():
 			logger.Infof("Shutting down SQS poller")
-			s.cancel()
 			return nil
 		default:
 			logger.Trace("Polling SQS queue")
 
-			out, err := s.sqsClient.ReceiveMessage(s.ctx, &sqs.ReceiveMessageInput{
+			out, err := s.sqsClient.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
 				QueueUrl:            aws.String(s.Config.SQSName),
 				MaxNumberOfMessages: 10,
 				WaitTimeSeconds:     20, // Probably no need to make it configurable ?
@@ -298,7 +298,7 @@ func (s *Source) sqsPoll() error {
 				if err != nil {
 					logger.Errorf("Error while parsing SQS message: %s", err)
 					// Always delete the message to avoid infinite loop
-					_, err = s.sqsClient.DeleteMessage(s.ctx,
+					_, err = s.sqsClient.DeleteMessage(ctx,
 						&sqs.DeleteMessageInput{
 							QueueUrl:      aws.String(s.Config.SQSName),
 							ReceiptHandle: message.ReceiptHandle,
@@ -314,13 +314,13 @@ func (s *Source) sqsPoll() error {
 
 				// don't block if readManager has quit
 				select {
-				case s.readerChan <- S3Object{Key: key, Bucket: bucket}:
-				case <-s.t.Dying():
-					logger.Debug("tomb is dying, dropping object send")
+				case readerChan <- S3Object{Key: key, Bucket: bucket}:
+				case <-ctx.Done():
+					logger.Debug("context canceled, dropping object send")
 					return nil
 				}
 
-				_, err = s.sqsClient.DeleteMessage(s.ctx,
+				_, err = s.sqsClient.DeleteMessage(ctx,
 					&sqs.DeleteMessageInput{
 						QueueUrl:      aws.String(s.Config.SQSName),
 						ReceiptHandle: message.ReceiptHandle,
@@ -335,7 +335,7 @@ func (s *Source) sqsPoll() error {
 	}
 }
 
-func (s *Source) readFile(bucket string, key string) error {
+func (s *Source) readFile(ctx context.Context, out chan pipeline.Event, bucket string, key string) error {
 	// TODO: Handle SSE-C
 	var scanner *bufio.Scanner
 
@@ -345,7 +345,7 @@ func (s *Source) readFile(bucket string, key string) error {
 		"key":    key,
 	})
 
-	output, err := s.s3Client.GetObject(s.ctx, &s3.GetObjectInput{
+	output, err := s.s3Client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
@@ -385,7 +385,7 @@ func (s *Source) readFile(bucket string, key string) error {
 
 	for scanner.Scan() {
 		select {
-		case <-s.t.Dying():
+		case <-ctx.Done():
 			s.logger.Infof("Shutting down reader for %s/%s", bucket, key)
 			return nil
 		default:
@@ -415,9 +415,9 @@ func (s *Source) readFile(bucket string, key string) error {
 
 			// don't block in shutdown
 			select {
-			case s.out <-evt:
-			case <-s.t.Dying():
-				s.logger.Infof("tomb is dying, dropping event for %s/%s", bucket, key)
+			case out <- evt:
+			case <-ctx.Done():
+				s.logger.Infof("context canceled, dropping event for %s/%s", bucket, key)
 				return nil
 			}
 		}
@@ -434,58 +434,57 @@ func (s *Source) readFile(bucket string, key string) error {
 	return nil
 }
 
-func (s *Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
+func (s *Source) OneShot(ctx context.Context, out chan pipeline.Event) error {
 	s.logger.Infof("starting acquisition of %s/%s/%s", s.Config.BucketName, s.Config.Prefix, s.Config.Key)
-	s.out = out
-	s.ctx, s.cancel = context.WithCancel(ctx)
 	s.Config.UseTimeMachine = true
-	s.t = t
 
 	if s.Config.Key != "" {
-		err := s.readFile(s.Config.BucketName, s.Config.Key)
+		err := s.readFile(ctx, out, s.Config.BucketName, s.Config.Key)
 		if err != nil {
 			return err
 		}
 	} else {
 		// No key, get everything in the bucket based on the prefix
-		objects, err := s.getBucketContent()
+		objects, err := s.getBucketContent(ctx)
 		if err != nil {
 			return err
 		}
 
 		for _, object := range objects {
-			err := s.readFile(s.Config.BucketName, *object.Key)
+			err := s.readFile(ctx, out, s.Config.BucketName, *object.Key)
 			if err != nil {
 				return err
 			}
 		}
 	}
 
-	t.Kill(nil)
-
 	return nil
 }
 
-func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
-	s.t = t
-	s.out = out
-	s.readerChan = make(chan S3Object, 100) // FIXME: does this needs to be buffered?
-	s.ctx, s.cancel = context.WithCancel(ctx)
+func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
+	readerChan := make(chan S3Object, 100) // FIXME: does this needs to be buffered?
 	s.logger.Infof("starting acquisition of %s/%s", s.Config.BucketName, s.Config.Prefix)
-	t.Go(func() error {
-		s.readManager()
+
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		s.readManager(gctx, out, readerChan)
 		return nil
 	})
 
 	if s.Config.PollingMethod == PollMethodSQS {
-		t.Go(func() error {
-			return s.sqsPoll()
+		g.Go(func() error {
+			return s.sqsPoll(gctx, readerChan)
 		})
 	} else {
-		t.Go(func() error {
-			return s.listPoll()
+		g.Go(func() error {
+			return s.listPoll(gctx, readerChan)
 		})
 	}
 
-	return nil
+	err := g.Wait()
+	if errors.Is(err, context.Canceled) {
+		return nil
+	}
+
+	return err
 }

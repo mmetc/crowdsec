@@ -2,13 +2,12 @@ package s3acquisition
 
 import (
 	"context"
+
 	s3Manager "github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
-	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
 type S3API interface {
@@ -27,11 +26,6 @@ type Source struct {
 	logger       *log.Entry
 	s3Client     S3API
 	sqsClient    SQSAPI
-	readerChan   chan S3Object
-	t            *tomb.Tomb
-	out          chan pipeline.Event
-	ctx          context.Context
-	cancel       context.CancelFunc
 }
 
 type S3Object struct {
