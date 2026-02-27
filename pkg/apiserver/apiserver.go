@@ -302,19 +302,7 @@ func (s *APIServer) initAPIC(ctx context.Context) {
 		}
 	}
 
-	s.apic.metricsTomb.Go(func() error {
-		defer trace.ReportPanic()
-		s.apic.SendMetrics(ctx, make(chan bool))
-		return nil
-	})
-
-	if !s.cfg.DisableUsageMetricsExport {
-		s.apic.metricsTomb.Go(func() error {
-			defer trace.ReportPanic()
-			s.apic.SendUsageMetrics(ctx)
-			return nil
-		})
-	}
+	s.apic.StartMetrics(ctx, !s.cfg.DisableUsageMetricsExport)
 }
 
 func (s *APIServer) Run(ctx context.Context, apiReady chan bool) error {

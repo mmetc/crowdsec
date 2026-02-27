@@ -291,13 +291,16 @@ func (a *apic) SendMetrics(ctx context.Context, stop chan bool) {
 
 	checkTicker := time.NewTicker(checkInt)
 	metTicker := time.NewTicker(nextMetInt())
+	defer checkTicker.Stop()
+	defer metTicker.Stop()
 
 	for {
 		select {
 		case <-stop:
-			checkTicker.Stop()
-			metTicker.Stop()
-
+			return
+		case <-ctx.Done():
+			a.pullTomb.Kill(nil)
+			a.pushTomb.Kill(nil)
 			return
 		case <-checkTicker.C:
 			oldIDs := machineIDs
@@ -326,13 +329,6 @@ func (a *apic) SendMetrics(ctx context.Context, stop chan bool) {
 			}
 
 			metTicker.Reset(nextMetInt())
-		case <-a.metricsTomb.Dying(): // if one apic routine is dying, do we kill the others?
-			checkTicker.Stop()
-			metTicker.Stop()
-			a.pullTomb.Kill(nil)
-			a.pushTomb.Kill(nil)
-
-			return
 		}
 	}
 }
@@ -345,8 +341,7 @@ func (a *apic) SendUsageMetrics(ctx context.Context) {
 
 	for {
 		select {
-		case <-a.metricsTomb.Dying():
-			// The normal metrics routine also kills push/pull tombs, does that make sense ?
+		case <-ctx.Done():
 			ticker.Stop()
 			return
 		case <-ticker.C:

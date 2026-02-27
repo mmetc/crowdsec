@@ -63,7 +63,8 @@ type apic struct {
 	mu            sync.Mutex
 	pushTomb      tomb.Tomb
 	pullTomb      tomb.Tomb
-	metricsTomb   tomb.Tomb
+	metricsCancel context.CancelFunc
+	metricsDone   chan struct{}
 	startup       bool
 	consoleConfig *csconfig.ConsoleConfig
 	isPulling     chan bool
@@ -195,7 +196,6 @@ func NewAPIC(ctx context.Context, config *csconfig.OnlineApiClientCfg, dbClient 
 		startup:                   true,
 		pullTomb:                  tomb.Tomb{},
 		pushTomb:                  tomb.Tomb{},
-		metricsTomb:               tomb.Tomb{},
 		consoleConfig:             consoleConfig,
 		pullInterval:              pullIntervalDefault,
 		pullIntervalFirst:         randomDuration(pullIntervalDefault, pullIntervalDelta),
@@ -295,7 +295,7 @@ func (a *apic) Push(ctx context.Context) error {
 		select {
 		case <-a.pushTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.pullTomb.Kill(nil)
-			a.metricsTomb.Kill(nil)
+			a.StopMetrics()
 			log.Infof("push tomb is dying, sending cache (%d elements) before exiting", len(cache))
 
 			if len(cache) == 0 {
@@ -1073,7 +1073,7 @@ func (a *apic) Pull(ctx context.Context) error {
 				continue
 			}
 		case <-a.pullTomb.Dying(): // if one apic routine is dying, do we kill the others?
-			a.metricsTomb.Kill(nil)
+			a.StopMetrics()
 			a.pushTomb.Kill(nil)
 
 			return nil
@@ -1081,10 +1081,62 @@ func (a *apic) Pull(ctx context.Context) error {
 	}
 }
 
+func (a *apic) StartMetrics(ctx context.Context, sendUsageMetrics bool) {
+	a.mu.Lock()
+	if a.metricsCancel != nil {
+		a.mu.Unlock()
+		return
+	}
+
+	metricsCtx, cancel := context.WithCancel(ctx)
+	done := make(chan struct{})
+	a.metricsCancel = cancel
+	a.metricsDone = done
+	a.mu.Unlock()
+
+	go func() {
+		var wg sync.WaitGroup
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			a.SendMetrics(metricsCtx, make(chan bool))
+		}()
+
+		if sendUsageMetrics {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				a.SendUsageMetrics(metricsCtx)
+			}()
+		}
+
+		wg.Wait()
+		close(done)
+	}()
+}
+
+func (a *apic) StopMetrics() {
+	a.mu.Lock()
+	cancel := a.metricsCancel
+	done := a.metricsDone
+	a.metricsCancel = nil
+	a.metricsDone = nil
+	a.mu.Unlock()
+
+	if cancel != nil {
+		cancel()
+	}
+
+	if done != nil {
+		<-done
+	}
+}
+
 func (a *apic) Shutdown() {
 	a.pushTomb.Kill(nil)
 	a.pullTomb.Kill(nil)
-	a.metricsTomb.Kill(nil)
+	a.StopMetrics()
 }
 
 func makeAddAndDeleteCounters() (map[string]map[string]int, map[string]map[string]int) {
