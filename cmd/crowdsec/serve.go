@@ -176,6 +176,8 @@ func shutdownAPI() error {
 }
 
 func shutdownCrowdsec() error {
+	log.Infof("Crowdsec engine shutting down")
+
 	log.Debugf("shutting down crowdsec via context")
 	if crowdCancel != nil {
 		crowdCancel()
