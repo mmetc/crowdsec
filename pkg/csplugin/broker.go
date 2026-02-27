@@ -138,9 +138,9 @@ func (pb *PluginBroker) popPluginAlerts(pluginName string) []*models.Alert {
 
 func (pb *PluginBroker) Run(ctx context.Context) {
 	// we get signaled via the channel when notifications need to be delivered to plugin (via the watcher)
-	notifyCtx := context.TODO()
+	notifyCtx := ctx
 
-	watcherCtx, cancelWatcher := context.WithCancel(context.Background())
+	watcherCtx, cancelWatcher := context.WithCancel(ctx)
 	watcherDone := pb.watcher.Start(watcherCtx)
 
 	for {
@@ -168,18 +168,26 @@ func (pb *PluginBroker) Run(ctx context.Context) {
 		case <-ctx.Done():
 			log.Infof("plugin context canceled")
 			cancelWatcher()
+			flushCtx, cancelFlush := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 
 			for {
 				select {
 				case <-watcherDone:
+					cancelFlush()
 					log.Info("killing all plugins")
+					pb.Kill()
+
+					return
+				case <-flushCtx.Done():
+					cancelFlush()
+					log.Warn("plugin flush timeout reached, stopping pending notifications")
 					pb.Kill()
 
 					return
 				case pluginName := <-pb.watcher.PluginEvents:
 					tmpAlerts := pb.popPluginAlerts(pluginName)
 
-					if err := pb.pushNotificationsToPlugin(notifyCtx, pluginName, tmpAlerts); err != nil {
+					if err := pb.pushNotificationsToPlugin(flushCtx, pluginName, tmpAlerts); err != nil {
 						log.WithField("plugin:", pluginName).Error(err)
 					}
 				}

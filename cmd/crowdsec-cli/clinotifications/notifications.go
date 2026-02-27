@@ -320,6 +320,10 @@ func (cli *cliNotifications) newTestCmd() *cobra.Command {
 				pluginBroker.Run(pluginCtx)
 				close(pluginDone)
 			}()
+			defer func() {
+				cancelPlugin()
+				<-pluginDone
+			}()
 
 			alert := &models.Alert{
 				Capacity: ptr.Of(int32(0)),
@@ -360,10 +364,6 @@ func (cli *cliNotifications) newTestCmd() *cobra.Command {
 				ProfileID: uint(0),
 				Alert:     alert,
 			}
-
-			// time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
-			cancelPlugin()
-			<-pluginDone
 
 			return nil
 		},
@@ -447,6 +447,10 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 				pluginBroker.Run(pluginCtx)
 				close(pluginDone)
 			}()
+			defer func() {
+				cancelPlugin()
+				<-pluginDone
+			}()
 
 			profiles, err := csprofiles.NewProfile(cfg.API.Server.Profiles)
 			if err != nil {
@@ -482,10 +486,6 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 					break
 				}
 			}
-			// time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
-			cancelPlugin()
-			<-pluginDone
-
 			return nil
 		},
 	}
