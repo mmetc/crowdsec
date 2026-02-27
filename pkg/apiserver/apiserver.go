@@ -275,15 +275,6 @@ func (s *APIServer) papiPull(ctx context.Context) error {
 	return nil
 }
 
-func (s *APIServer) papiSync(ctx context.Context) error {
-	if err := s.papi.SyncDecisions(ctx); err != nil {
-		log.Errorf("capi decisions sync: %s", err)
-		return err
-	}
-
-	return nil
-}
-
 func (s *APIServer) initAPIC(ctx context.Context) {
 	s.apic.pushTomb.Go(func() error {
 		defer trace.ReportPanic()
@@ -302,10 +293,7 @@ func (s *APIServer) initAPIC(ctx context.Context) {
 					defer trace.ReportPanic()
 					return s.papiPull(ctx)
 				})
-				s.papi.syncTomb.Go(func() error {
-					defer trace.ReportPanic()
-					return s.papiSync(ctx)
-				})
+				s.papi.StartSync(ctx)
 			} else {
 				log.Warnf("papi_url is not set in online_api_credentials.yaml, can't synchronize with the console. Run cscli console enable console_management to add it.")
 			}
