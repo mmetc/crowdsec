@@ -22,7 +22,8 @@ func initAPIServer(ctx context.Context, cConfig *csconfig.Config) (*apiserver.AP
 	}
 
 	if cConfig.API.Server.ListenURI != "" {
-		listener, err := net.Listen("tcp", cConfig.API.Server.ListenURI)
+		listenConfig := &net.ListenConfig{}
+		listener, err := listenConfig.Listen(ctx, "tcp", cConfig.API.Server.ListenURI)
 		if err != nil {
 			return nil, fmt.Errorf("local API server stopped with error: listening on %s: %w", cConfig.API.Server.ListenURI, err)
 		}
@@ -88,7 +89,7 @@ func serveAPIServer(ctx context.Context, apiServer *apiserver.APIServer) {
 		case <-runCtx.Done():
 			log.Infof("serve: shutting down api server")
 
-			shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), 5*time.Second)
+			shutdownCtx, cancelShutdown := context.WithTimeout(context.WithoutCancel(runCtx), 5*time.Second)
 			err := apiServer.Shutdown(shutdownCtx)
 			cancelShutdown()
 
