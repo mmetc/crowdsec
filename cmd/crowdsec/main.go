@@ -30,12 +30,13 @@ import (
 )
 
 var (
-	// tombs for the parser, buckets and outputs.
-	acquisTomb   tomb.Tomb
-	outputsTomb  tomb.Tomb
-	apiTomb      tomb.Tomb
-	crowdsecTomb tomb.Tomb
-	pluginTomb   tomb.Tomb
+	// tombs for acquisition and output routines.
+	acquisTomb  tomb.Tomb
+	outputsTomb tomb.Tomb
+	apiCancel   context.CancelFunc
+	apiDone     chan error
+	crowdCancel context.CancelFunc
+	crowdDone   chan error
 
 	flags Flags
 

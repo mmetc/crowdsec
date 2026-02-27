@@ -27,12 +27,13 @@ import (
 )
 
 func reloadHandler(ctx context.Context, _ os.Signal) (*csconfig.Config, error) {
-	// re-initialize tombs
+	// re-initialize routines state
 	acquisTomb = tomb.Tomb{}
 	outputsTomb = tomb.Tomb{}
-	apiTomb = tomb.Tomb{}
-	crowdsecTomb = tomb.Tomb{}
-	pluginTomb = tomb.Tomb{}
+	apiCancel = nil
+	apiDone = nil
+	crowdCancel = nil
+	crowdDone = nil
 
 	sd := NewStateDumper(flags.DumpDir)
 
@@ -151,9 +152,6 @@ func ShutdownCrowdsecRoutines(cancel context.CancelFunc, g *errgroup.Group, data
 	log.Debugf("buckets are done")
 	log.Debugf("metrics are done")
 
-	// He's dead, Jim.
-	crowdsecTomb.Kill(nil)
-
 	// close the potential geoips reader we have to avoid leaking ressources on reload
 	exprhelpers.GeoIPClose()
 
@@ -161,11 +159,15 @@ func ShutdownCrowdsecRoutines(cancel context.CancelFunc, g *errgroup.Group, data
 }
 
 func shutdownAPI() error {
-	log.Debugf("shutting down api via Tomb")
-	apiTomb.Kill(nil)
+	log.Debugf("shutting down api via context")
+	if apiCancel != nil {
+		apiCancel()
+	}
 
-	if err := apiTomb.Wait(); err != nil {
-		return err
+	if apiDone != nil {
+		if err := <-apiDone; err != nil {
+			return err
+		}
 	}
 
 	log.Debugf("done")
@@ -174,11 +176,15 @@ func shutdownAPI() error {
 }
 
 func shutdownCrowdsec() error {
-	log.Debugf("shutting down crowdsec via Tomb")
-	crowdsecTomb.Kill(nil)
+	log.Debugf("shutting down crowdsec via context")
+	if crowdCancel != nil {
+		crowdCancel()
+	}
 
-	if err := crowdsecTomb.Wait(); err != nil {
-		return err
+	if crowdDone != nil {
+		if err := <-crowdDone; err != nil {
+			return err
+		}
 	}
 
 	log.Debugf("done")
@@ -312,9 +318,10 @@ func Serve(
 ) error {
 	acquisTomb = tomb.Tomb{}
 	outputsTomb = tomb.Tomb{}
-	apiTomb = tomb.Tomb{}
-	crowdsecTomb = tomb.Tomb{}
-	pluginTomb = tomb.Tomb{}
+	apiCancel = nil
+	apiDone = nil
+	crowdCancel = nil
+	crowdDone = nil
 
 	if cConfig.API.Server != nil && cConfig.API.Server.DbConfig != nil {
 		dbCfg := cConfig.API.Server.DbConfig
@@ -408,25 +415,22 @@ func Serve(
 		return HandleSignals(ctx, cConfig)
 	}
 
-	waitChans := make([]<-chan struct{}, 0)
-
 	if !cConfig.DisableAgent {
-		waitChans = append(waitChans, crowdsecTomb.Dead())
+		if crowdDone != nil {
+			if err := <-crowdDone; err != nil {
+				return fmt.Errorf("crowdsec shutdown: %w", err)
+			}
+		}
+		log.Infof("crowdsec shutdown")
 	}
 
 	if !cConfig.DisableAPI {
-		waitChans = append(waitChans, apiTomb.Dead())
-	}
-
-	for _, ch := range waitChans {
-		<-ch
-
-		switch ch {
-		case apiTomb.Dead():
-			log.Infof("api shutdown")
-		case crowdsecTomb.Dead():
-			log.Infof("crowdsec shutdown")
+		if apiDone != nil {
+			if err := <-apiDone; err != nil {
+				return fmt.Errorf("api shutdown: %w", err)
+			}
 		}
+		log.Infof("api shutdown")
 	}
 
 	return nil
