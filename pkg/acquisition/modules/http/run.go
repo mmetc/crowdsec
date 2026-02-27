@@ -15,7 +15,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
@@ -130,7 +129,7 @@ func (s *Source) processRequest(w http.ResponseWriter, r *http.Request, hc *Conf
 	return nil
 }
 
-func (s *Source) RunServer(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
+func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc(s.Config.Path, func(w http.ResponseWriter, r *http.Request) {
 		if err := authorizeRequest(r, &s.Config); err != nil {
@@ -210,12 +209,13 @@ func (s *Source) RunServer(ctx context.Context, out chan pipeline.Event, t *tomb
 	}
 
 	listenConfig := &net.ListenConfig{}
+	serverErr := make(chan error, 2)
 
-	t.Go(func() error {
+	go func() {
 		defer trace.ReportPanic()
 
 		if s.Config.ListenSocket == "" {
-			return nil
+			return
 		}
 
 		s.logger.Infof("creating unix socket on %s", s.Config.ListenSocket)
@@ -223,29 +223,38 @@ func (s *Source) RunServer(ctx context.Context, out chan pipeline.Event, t *tomb
 
 		listener, err := listenConfig.Listen(ctx, "unix", s.Config.ListenSocket)
 		if err != nil {
-			return csnet.WrapSockErr(err, s.Config.ListenSocket)
+			select {
+			case serverErr <- csnet.WrapSockErr(err, s.Config.ListenSocket):
+			default:
+			}
+
+			return
 		}
 
 		if s.Config.TLS != nil {
 			err := s.Server.ServeTLS(listener, s.Config.TLS.ServerCert, s.Config.TLS.ServerKey)
 			if err != nil && err != http.ErrServerClosed {
-				return fmt.Errorf("https server failed: %w", err)
+				select {
+				case serverErr <- fmt.Errorf("https server failed: %w", err):
+				default:
+				}
 			}
 		} else {
 			err := s.Server.Serve(listener)
 			if err != nil && err != http.ErrServerClosed {
-				return fmt.Errorf("http server failed: %w", err)
+				select {
+				case serverErr <- fmt.Errorf("http server failed: %w", err):
+				default:
+				}
 			}
 		}
+	}()
 
-		return nil
-	})
-
-	t.Go(func() error {
+	go func() {
 		defer trace.ReportPanic()
 
 		if s.Config.ListenAddr == "" {
-			return nil
+			return
 		}
 
 		if s.Config.TLS != nil {
@@ -253,38 +262,33 @@ func (s *Source) RunServer(ctx context.Context, out chan pipeline.Event, t *tomb
 
 			err := s.Server.ListenAndServeTLS(s.Config.TLS.ServerCert, s.Config.TLS.ServerKey)
 			if err != nil && err != http.ErrServerClosed {
-				return fmt.Errorf("https server failed: %w", err)
+				select {
+				case serverErr <- fmt.Errorf("https server failed: %w", err):
+				default:
+				}
 			}
 		} else {
 			s.logger.Infof("start http server on %s", s.Config.ListenAddr)
 
 			err := s.Server.ListenAndServe()
 			if err != nil && err != http.ErrServerClosed {
-				return fmt.Errorf("http server failed: %w", err)
+				select {
+				case serverErr <- fmt.Errorf("http server failed: %w", err):
+				default:
+				}
 			}
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		s.logger.Infof("%s datasource stopping", s.GetName())
+		if err := s.Server.Close(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return fmt.Errorf("while closing %s server: %w", s.GetName(), err)
 		}
 
 		return nil
-	})
-
-	<-t.Dying()
-
-	s.logger.Infof("%s datasource stopping", s.GetName())
-
-	if err := s.Server.Close(); err != nil {
-		return fmt.Errorf("while closing %s server: %w", s.GetName(), err)
+	case err := <-serverErr:
+		return err
 	}
-
-	return nil
-}
-
-func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
-	s.logger.Debugf("start http server on %s", s.Config.ListenAddr)
-
-	t.Go(func() error {
-		defer trace.ReportPanic()
-		return s.RunServer(ctx, out, t)
-	})
-
-	return nil
 }
