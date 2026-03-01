@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,7 +16,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	tomb "gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
@@ -242,9 +242,7 @@ since: 1h
 				}
 			}()
 
-			lokiTomb := tomb.Tomb{}
-
-			if err := lokiSource.OneShotAcquisition(ctx, out, &lokiTomb); err != nil {
+			if err := lokiSource.OneShot(ctx, out); err != nil {
 				t.Fatalf("Unexpected error : %s", err)
 			}
 
@@ -307,7 +305,6 @@ query: >
 			})
 
 			out := make(chan pipeline.Event)
-			lokiTomb := tomb.Tomb{}
 			lokiSource := loki.Source{}
 
 			err := lokiSource.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
@@ -315,46 +312,56 @@ query: >
 				t.Fatalf("Unexpected error : %s", err)
 			}
 
-			err = lokiSource.StreamingAcquisition(ctx, out, &lokiTomb)
-			cstest.AssertErrorContains(t, err, ts.streamErr)
+			streamCtx, streamCancel := context.WithCancel(ctx)
+			defer streamCancel()
+
+			streamErrCh := make(chan error, 1)
+			go func() {
+				streamErrCh <- lokiSource.Stream(streamCtx, out)
+			}()
 
 			if ts.streamErr != "" {
+				err = <-streamErrCh
+				cstest.AssertErrorContains(t, err, ts.streamErr)
 				return
 			}
 
 			time.Sleep(time.Second * 2) // We need to give time to start reading from the WS
 
-			readTomb := tomb.Tomb{}
 			readCtx, cancel := context.WithTimeout(ctx, time.Second*10)
 			count := 0
+			readErrCh := make(chan error, 1)
 
-			readTomb.Go(func() error {
+			go func() {
 				defer cancel()
 
 				for {
 					select {
 					case <-readCtx.Done():
-						return readCtx.Err()
+						readErrCh <- readCtx.Err()
+						return
 					case evt := <-out:
 						count++
 
 						if !strings.HasSuffix(evt.Line.Raw, title) {
-							return fmt.Errorf("Incorrect suffix : %s", evt.Line.Raw)
+							readErrCh <- fmt.Errorf("Incorrect suffix : %s", evt.Line.Raw)
+							return
 						}
 
 						if count == ts.expectedLines {
-							return nil
+							readErrCh <- nil
+							return
 						}
 					}
 				}
-			})
+			}()
 
 			err = feedLoki(ctx, subLogger, ts.expectedLines, title)
 			if err != nil {
 				t.Fatalf("Unexpected error : %s", err)
 			}
 
-			err = readTomb.Wait()
+			err = <-readErrCh
 
 			cancel()
 
@@ -393,12 +400,12 @@ query: >
 
 	out := make(chan pipeline.Event)
 
-	lokiTomb := &tomb.Tomb{}
+	streamCtx, streamCancel := context.WithCancel(ctx)
+	streamErrCh := make(chan error, 1)
 
-	err = lokiSource.StreamingAcquisition(ctx, out, lokiTomb)
-	if err != nil {
-		t.Fatalf("Unexpected error : %s", err)
-	}
+	go func() {
+		streamErrCh <- lokiSource.Stream(streamCtx, out)
+	}()
 
 	time.Sleep(time.Second * 2)
 
@@ -407,10 +414,10 @@ query: >
 		t.Fatalf("Unexpected error : %s", err)
 	}
 
-	lokiTomb.Kill(nil)
+	streamCancel()
 
-	err = lokiTomb.Wait()
-	if err != nil {
+	err = <-streamErrCh
+	if err != nil && !errors.Is(err, context.Canceled) {
 		t.Fatalf("Unexpected error : %s", err)
 	}
 }

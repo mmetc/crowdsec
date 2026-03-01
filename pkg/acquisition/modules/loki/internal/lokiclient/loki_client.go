@@ -14,7 +14,6 @@ import (
 
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
 	"maps"
@@ -24,7 +23,6 @@ type LokiClient struct {
 	Logger *log.Entry
 
 	config                Config
-	t                     *tomb.Tomb
 	failStart             time.Time
 	currentTickerInterval time.Duration
 	requestHeaders        map[string]string
@@ -67,10 +65,6 @@ func updateURI(uri string, lq LokiQueryRangeResponse, infinite bool) (string, er
 
 	u.RawQuery = queryParams.Encode()
 	return u.String(), nil
-}
-
-func (lc *LokiClient) SetTomb(t *tomb.Tomb) {
-	lc.t = t
 }
 
 func (lc *LokiClient) resetFailStart() {
@@ -120,8 +114,6 @@ func (lc *LokiClient) queryRange(ctx context.Context, uri string, c chan *LokiQu
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-lc.t.Dying():
-			return lc.t.Err()
 		case <-ticker.C:
 			resp, err := lc.Get(ctx, uri)
 			if err != nil {
@@ -218,9 +210,6 @@ func (lc *LokiClient) Ready(ctx context.Context) error {
 		case <-ctx.Done():
 			tick.Stop()
 			return ctx.Err()
-		case <-lc.t.Dying():
-			tick.Stop()
-			return lc.t.Err()
 		case <-tick.C:
 			lc.Logger.Debug("Checking if Loki is ready")
 			resp, err := lc.Get(ctx, url)
@@ -273,7 +262,7 @@ func (lc *LokiClient) Tail(ctx context.Context) (chan *LokiResponse, error) {
 		return responseChan, errors.New("error connecting to websocket")
 	}
 
-	lc.t.Go(func() error {
+	go func() {
 		defer conn.Close()
 		for {
 			jsonResponse := &LokiResponse{}
@@ -281,12 +270,13 @@ func (lc *LokiClient) Tail(ctx context.Context) (chan *LokiResponse, error) {
 			err = conn.ReadJSON(jsonResponse)
 			if err != nil {
 				lc.Logger.Errorf("Error reading from websocket: %s", err)
-				return fmt.Errorf("websocket error: %w", err)
+				close(responseChan)
+				return
 			}
 
 			responseChan <- jsonResponse
 		}
-	})
+	}()
 
 	return responseChan, nil
 }
@@ -305,9 +295,11 @@ func (lc *LokiClient) QueryRange(ctx context.Context, infinite bool) chan *LokiQ
 	lc.Logger.Debugf("Since: %s (%s)", lc.config.Since, time.Now().Add(-lc.config.Since))
 
 	lc.Logger.Infof("Connecting to %s", url)
-	lc.t.Go(func() error {
-		return lc.queryRange(ctx, url, c, infinite)
-	})
+	go func() {
+		if err := lc.queryRange(ctx, url, c, infinite); err != nil {
+			lc.Logger.Errorf("Error querying range: %s", err)
+		}
+	}()
 	return c
 }
 
