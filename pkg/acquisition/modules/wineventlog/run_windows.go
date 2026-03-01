@@ -11,9 +11,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/windows"
-	"gopkg.in/tomb.v2"
-
-	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -63,7 +60,7 @@ func (s *Source) getXMLEvents(config *winlog.SubscribeConfig, publisherCache map
 	return renderedEvents, err
 }
 
-func (s *Source) getEvents(out chan pipeline.Event, t *tomb.Tomb) error {
+func (s *Source) getEvents(ctx context.Context, out chan pipeline.Event) error {
 	subscription, err := winlog.Subscribe(s.evtConfig)
 	if err != nil {
 		s.logger.Errorf("Failed to subscribe to event log: %s", err)
@@ -78,7 +75,7 @@ func (s *Source) getEvents(out chan pipeline.Event, t *tomb.Tomb) error {
 	}()
 	for {
 		select {
-		case <-t.Dying():
+		case <-ctx.Done():
 			s.logger.Infof("wineventlog is dying")
 			return nil
 		default:
@@ -170,10 +167,6 @@ OUTER_LOOP:
 	return nil
 }
 
-func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
-	t.Go(func() error {
-		defer trace.ReportPanic()
-		return s.getEvents(out, t)
-	})
-	return nil
+func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
+	return s.getEvents(ctx, out)
 }

@@ -8,7 +8,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
@@ -61,7 +60,7 @@ func (*Source) CanRun() error {
 	return errors.New("windows event log acquisition is only supported on Windows")
 }
 
-func (*Source) StreamingAcquisition(_ context.Context, _ chan pipeline.Event, _ *tomb.Tomb) error {
+func (*Source) Stream(_ context.Context, _ chan pipeline.Event) error {
 	return nil
 }
 
