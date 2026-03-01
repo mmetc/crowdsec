@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/victorialogs/internal/vlclient"
@@ -13,10 +12,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-// OneShotAcquisition reads a set of file and returns when done
-func (s *Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
+func (s *Source) OneShot(ctx context.Context, out chan pipeline.Event) error {
 	s.logger.Debug("VictoriaLogs one shot acquisition")
-	s.Client.SetTomb(t)
 
 	readyCtx, cancel := context.WithTimeout(ctx, s.Config.WaitForReady)
 	defer cancel()
@@ -36,7 +33,7 @@ func (s *Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event
 
 	for {
 		select {
-		case <-t.Dying():
+		case <-ctx.Done():
 			s.logger.Debug("VictoriaLogs one shot acquisition stopped")
 			return nil
 		case resp, ok := <-respChan:
@@ -76,9 +73,7 @@ func (s *Source) readOneEntry(entry *vlclient.Log, labels map[string]string, out
 	}
 }
 
-func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
-	s.Client.SetTomb(t)
-
+func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	readyCtx, cancel := context.WithTimeout(ctx, s.Config.WaitForReady)
 	defer cancel()
 
@@ -87,44 +82,25 @@ func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 		return fmt.Errorf("VictoriaLogs is not ready: %w", err)
 	}
 
-	lctx, clientCancel := context.WithCancel(ctx)
-	// Don't defer clientCancel(), the client outlives this function call
+	respChan, err := s.getResponseChan(ctx, true)
+	if err != nil {
+		s.logger.Errorf("could not start VictoriaLogs tail: %s", err)
+		return fmt.Errorf("while starting VictoriaLogs tail: %w", err)
+	}
 
-	t.Go(func() error {
-		<-t.Dying()
-		clientCancel()
-
-		return nil
-	})
-
-	t.Go(func() error {
-		respChan, err := s.getResponseChan(lctx, true)
-		if err != nil {
-			clientCancel()
-			s.logger.Errorf("could not start VictoriaLogs tail: %s", err)
-
-			return fmt.Errorf("while starting VictoriaLogs tail: %w", err)
-		}
-
-		for {
-			select {
-			case resp, ok := <-respChan:
-				if !ok {
-					s.logger.Warnf("VictoriaLogs channel closed")
-					clientCancel()
-
-					return err
-				}
-
-				s.readOneEntry(resp, s.Config.Labels, out)
-			case <-t.Dying():
-				clientCancel()
-				return nil
+	for {
+		select {
+		case resp, ok := <-respChan:
+			if !ok {
+				s.logger.Warnf("VictoriaLogs channel closed")
+				return err
 			}
-		}
-	})
 
-	return nil
+			s.readOneEntry(resp, s.Config.Labels, out)
+		case <-ctx.Done():
+			return nil
+		}
+	}
 }
 
 func (s *Source) getResponseChan(ctx context.Context, infinite bool) (chan *vlclient.Log, error) {
