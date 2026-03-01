@@ -3,48 +3,45 @@ package kubernetesauditacquisition
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"gopkg.in/tomb.v2"
 	"k8s.io/apiserver/pkg/apis/audit"
-
-	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
+func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	s.outChan = out
 
-	t.Go(func() error {
-		defer trace.ReportPanic()
+	s.logger.Infof("Starting k8s-audit server on %s:%d%s", s.config.ListenAddr, s.config.ListenPort, s.config.WebhookPath)
 
-		s.logger.Infof("Starting k8s-audit server on %s:%d%s", s.config.ListenAddr, s.config.ListenPort, s.config.WebhookPath)
+	serverErr := make(chan error, 1)
 
-		t.Go(func() error {
-			err := s.server.ListenAndServe()
-			if err != nil && err != http.ErrServerClosed {
-				return fmt.Errorf("k8s-audit server failed: %w", err)
-			}
+	go func() {
+		err := s.server.ListenAndServe()
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverErr <- fmt.Errorf("k8s-audit server failed: %w", err)
+		}
+	}()
 
-			return nil
-		})
-		<-t.Dying()
+	select {
+	case <-ctx.Done():
 		s.logger.Infof("Stopping k8s-audit server on %s:%d%s", s.config.ListenAddr, s.config.ListenPort, s.config.WebhookPath)
 
-		if err := s.server.Shutdown(ctx); err != nil {
+		if err := s.server.Shutdown(context.Background()); err != nil { //nolint:contextcheck // shutdown needs a fresh context after parent cancellation
 			s.logger.Errorf("Error shutting down k8s-audit server: %s", err.Error())
 		}
 
 		return nil
-	})
-
-	return nil
+	case err := <-serverErr:
+		return err
+	}
 }
 
 func (s *Source) webhookHandler(w http.ResponseWriter, r *http.Request) {
