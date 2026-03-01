@@ -10,7 +10,6 @@ import (
 	"github.com/segmentio/kafka-go"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
@@ -68,8 +67,6 @@ func createTopic(topic string, broker string) {
 func TestStreamingAcquisition(t *testing.T) {
 	cstest.SetAWSTestEnv(t)
 
-	ctx := t.Context()
-
 	tests := []struct {
 		name          string
 		logs          []string
@@ -101,6 +98,9 @@ func TestStreamingAcquisition(t *testing.T) {
 
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+
 			k := Source{}
 
 			err := k.Configure(ctx, []byte(`
@@ -112,11 +112,12 @@ topic: crowdsecplaintext`), subLogger, metrics.AcquisitionMetricsLevelNone)
 				t.Fatalf("could not configure kafka source : %s", err)
 			}
 
-			tomb := tomb.Tomb{}
-
 			out := make(chan pipeline.Event)
-			err = k.StreamingAcquisition(ctx, out, &tomb)
-			cstest.AssertErrorContains(t, err, ts.expectedErr)
+
+			streamErr := make(chan error, 1)
+			go func() {
+				streamErr <- k.Stream(ctx, out)
+			}()
 
 			actualLines := 0
 
@@ -132,17 +133,15 @@ topic: crowdsecplaintext`), subLogger, metrics.AcquisitionMetricsLevelNone)
 			}
 
 			require.Equal(t, ts.expectedLines, actualLines)
-			tomb.Kill(nil)
-			err = tomb.Wait()
-			require.NoError(t, err)
+			cancel()
+			err = <-streamErr
+			cstest.AssertErrorContains(t, err, ts.expectedErr)
 		})
 	}
 }
 
 func TestStreamingAcquisitionWithSSL(t *testing.T) {
 	cstest.SetAWSTestEnv(t)
-
-	ctx := t.Context()
 
 	tests := []struct {
 		name          string
@@ -174,6 +173,9 @@ func TestStreamingAcquisitionWithSSL(t *testing.T) {
 
 	for _, ts := range tests {
 		t.Run(ts.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+
 			k := Source{}
 
 			err := k.Configure(ctx, []byte(`
@@ -191,10 +193,12 @@ tls:
 				t.Fatalf("could not configure kafka source : %s", err)
 			}
 
-			tomb := tomb.Tomb{}
 			out := make(chan pipeline.Event)
-			err = k.StreamingAcquisition(ctx, out, &tomb)
-			cstest.AssertErrorContains(t, err, ts.expectedErr)
+
+			streamErr := make(chan error, 1)
+			go func() {
+				streamErr <- k.Stream(ctx, out)
+			}()
 
 			actualLines := 0
 
@@ -210,9 +214,9 @@ tls:
 			}
 
 			require.Equal(t, ts.expectedLines, actualLines)
-			tomb.Kill(nil)
-			err = tomb.Wait()
-			require.NoError(t, err)
+			cancel()
+			err = <-streamErr
+			cstest.AssertErrorContains(t, err, ts.expectedErr)
 		})
 	}
 }
