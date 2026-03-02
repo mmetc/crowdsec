@@ -67,3 +67,12 @@ setup() {
 	2
 	EOT
 }
+
+@test "run a command with timeout (match, slow shutdown)" {
+    # even if the process doesn't stop quickly, a matched pattern must not become timeout=241
+    rune -128 wait-for --timeout .2 --out "2" sh -c 'trap "" TERM; echo 1; echo 2; sleep 5'
+    assert_output - <<-EOT
+	1
+	2
+	EOT
+}

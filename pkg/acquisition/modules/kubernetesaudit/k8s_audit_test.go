@@ -1,6 +1,7 @@
 package kubernetesauditacquisition
 
 import (
+	"context"
 	"fmt"
 	"net/http/httptest"
 	"strings"
@@ -10,7 +11,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
@@ -19,7 +19,6 @@ import (
 )
 
 func TestInvalidConfig(t *testing.T) {
-	ctx := t.Context()
 	tests := []struct {
 		name        string
 		config      string
@@ -39,8 +38,10 @@ webhook_path: /k8s-audit`,
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+
 			out := make(chan pipeline.Event)
-			tb := &tomb.Tomb{}
 
 			f := Source{}
 
@@ -51,19 +52,21 @@ webhook_path: /k8s-audit`,
 			err = f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 
 			require.NoError(t, err)
-			err = f.StreamingAcquisition(ctx, out, tb)
-			require.NoError(t, err)
+
+			streamErr := make(chan error, 1)
+			go func() {
+				streamErr <- f.Stream(ctx, out)
+			}()
 
 			time.Sleep(1 * time.Second)
-			tb.Kill(nil)
-			err = tb.Wait()
+			cancel()
+			err = <-streamErr
 			cstest.RequireErrorContains(t, err, test.expectedErr)
 		})
 	}
 }
 
 func TestHandler(t *testing.T) {
-	ctx := t.Context()
 	tests := []struct {
 		name               string
 		expectedStatusCode int
@@ -185,20 +188,24 @@ func TestHandler(t *testing.T) {
 
 	for idx, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+
 			out := make(chan pipeline.Event)
-			tb := &tomb.Tomb{}
 			eventCount := 0
 
-			tb.Go(func() error {
+			doneCounting := make(chan struct{})
+			go func() {
+				defer close(doneCounting)
 				for {
 					select {
 					case <-out:
 						eventCount++
-					case <-tb.Dying():
-						return nil
+					case <-ctx.Done():
+						return
 					}
 				}
-			})
+			}()
 
 			f := Source{}
 
@@ -217,19 +224,21 @@ webhook_path: /k8s-audit`, port)
 			req := httptest.NewRequest(test.method, "/k8s-audit", strings.NewReader(test.body))
 			w := httptest.NewRecorder()
 
-			err = f.StreamingAcquisition(ctx, out, tb)
-			require.NoError(t, err)
+			streamErr := make(chan error, 1)
+			go func() {
+				streamErr <- f.Stream(ctx, out)
+			}()
 
 			f.webhookHandler(w, req)
 
 			res := w.Result()
 
 			assert.Equal(t, test.expectedStatusCode, res.StatusCode)
-			// time.Sleep(1 * time.Second)
 			require.NoError(t, err)
 
-			tb.Kill(nil)
-			err = tb.Wait()
+			cancel()
+			<-doneCounting
+			err = <-streamErr
 			require.NoError(t, err)
 
 			assert.Equal(t, test.eventCount, eventCount)

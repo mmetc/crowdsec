@@ -10,7 +10,6 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -65,8 +64,8 @@ type Papi struct {
 	apiClient     *apiclient.ApiClient
 	Channels      *OperationChannels
 	mu            sync.Mutex
-	pullTomb      tomb.Tomb
-	syncTomb      tomb.Tomb
+	syncCancel    context.CancelFunc
+	syncDone      chan struct{}
 	SyncInterval  time.Duration
 	consoleConfig *csconfig.ConsoleConfig
 	Logger        *log.Entry
@@ -113,8 +112,6 @@ func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.Cons
 		Channels:      channels,
 		SyncInterval:  SyncInterval,
 		mu:            sync.Mutex{},
-		pullTomb:      tomb.Tomb{},
-		syncTomb:      tomb.Tomb{},
 		apiClient:     apic.apiClient,
 		apic:          apic,
 		consoleConfig: consoleConfig,
@@ -296,7 +293,13 @@ func (p *Papi) Pull(ctx context.Context) error {
 				papiChan = nil
 				p.Logger.Debug("done stopping PAPI pull")
 			}
-		case event := <-papiChan:
+		case event, ok := <-papiChan:
+			if !ok {
+				p.Logger.Debug("PAPI event stream closed")
+				papiChan = nil
+				continue
+			}
+
 			logger := p.Logger.WithField("request-id", event.RequestId)
 			// update last timestamp in database
 			newTime := time.Now().UTC()
@@ -323,22 +326,59 @@ func (p *Papi) Pull(ctx context.Context) error {
 	}
 }
 
+func (p *Papi) StartSync(ctx context.Context) {
+	p.mu.Lock()
+	if p.syncCancel != nil {
+		p.mu.Unlock()
+		return
+	}
+
+	syncCtx, cancel := context.WithCancel(ctx)
+	done := make(chan struct{})
+	p.syncCancel = cancel
+	p.syncDone = done
+	p.mu.Unlock()
+
+	go func() {
+		defer close(done)
+		_ = p.SyncDecisions(syncCtx)
+	}()
+}
+
+func (p *Papi) StopSync() {
+	p.mu.Lock()
+	cancel := p.syncCancel
+	done := p.syncDone
+	p.syncCancel = nil
+	p.syncDone = nil
+	p.mu.Unlock()
+
+	if cancel != nil {
+		cancel()
+	}
+
+	if done != nil {
+		<-done
+	}
+}
+
 func (p *Papi) SyncDecisions(ctx context.Context) error {
 	var cache models.DecisionsDeleteRequest
 
 	ticker := time.NewTicker(p.SyncInterval)
+	defer ticker.Stop()
 	p.Logger.Infof("Start decisions sync to CrowdSec Central API (interval: %s)", p.SyncInterval)
 
 	for {
 		select {
-		case <-p.syncTomb.Dying(): // if one apic routine is dying, do we kill the others?
-			p.Logger.Infof("sync decisions tomb is dying, sending cache (%d elements) before exiting", len(cache))
+		case <-ctx.Done():
+			p.Logger.Infof("sync decisions context canceled, sending cache (%d elements) before exiting", len(cache))
 
 			if len(cache) == 0 {
 				return nil
 			}
 
-			go p.SendDeletedDecisions(ctx, &cache)
+			go p.SendDeletedDecisions(context.WithoutCancel(ctx), &cache)
 
 			return nil
 		case <-ticker.C:
@@ -398,7 +438,7 @@ func (p *Papi) SendDeletedDecisions(ctx context.Context, cacheOrig *models.Decis
 
 func (p *Papi) Shutdown() {
 	p.Logger.Infof("Shutting down PAPI")
-	p.syncTomb.Kill(nil)
+	p.StopSync()
 	select {
 	case p.stopChan <- struct{}{}: // Cancel any HTTP request still in progress
 	default:

@@ -3,6 +3,7 @@
 package wineventlogacquisition
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/windows/svc/eventlog"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
@@ -141,8 +141,6 @@ event_level: bla`,
 }
 
 func TestLiveAcquisition(t *testing.T) {
-	ctx := t.Context()
-
 	err := exprhelpers.Init(nil)
 	require.NoError(t, err)
 
@@ -198,15 +196,17 @@ event_ids:
 	}
 
 	for _, test := range tests {
-		to := &tomb.Tomb{}
+		ctx, cancel := context.WithCancel(t.Context())
 		c := make(chan pipeline.Event)
 		f := Source{}
 
 		err := f.Configure(ctx, []byte(test.config), subLogger, metrics.AcquisitionMetricsLevelNone)
 		require.NoError(t, err)
 
-		err = f.StreamingAcquisition(ctx, c, to)
-		require.NoError(t, err)
+		streamErr := make(chan error, 1)
+		go func() {
+			streamErr <- f.Stream(ctx, c)
+		}()
 
 		time.Sleep(time.Second)
 		lines := test.expectedLines
@@ -238,8 +238,8 @@ event_ids:
 		} else {
 			assert.Equal(t, test.expectedLines, linesRead)
 		}
-		to.Kill(nil)
-		_ = to.Wait()
+		cancel()
+		<-streamErr
 	}
 }
 

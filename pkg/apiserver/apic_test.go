@@ -19,7 +19,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
@@ -57,12 +56,10 @@ func getAPIC(t *testing.T, ctx context.Context) *apic {
 	return &apic{
 		AlertsAddChan: make(chan []*models.Alert),
 		// DecisionDeleteChan: make(chan []*models.Decision),
-		dbClient:    dbClient,
-		mu:          sync.Mutex{},
-		startup:     true,
-		pullTomb:    tomb.Tomb{},
-		pushTomb:    tomb.Tomb{},
-		metricsTomb: tomb.Tomb{},
+		dbClient: dbClient,
+		mu:       sync.Mutex{},
+		startup:  true,
+		stopChan: make(chan struct{}),
 		consoleConfig: &csconfig.ConsoleConfig{
 			ShareManualDecisions:  ptr.Of(false),
 			ShareTaintedScenarios: ptr.Of(false),

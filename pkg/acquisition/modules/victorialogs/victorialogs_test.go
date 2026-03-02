@@ -17,7 +17,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
@@ -211,9 +210,7 @@ since: 1h
 			}
 		}()
 
-		vlTomb := tomb.Tomb{}
-
-		err = vlSource.OneShotAcquisition(ctx, out, &vlTomb)
+		err = vlSource.OneShot(ctx, out)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
@@ -273,7 +270,6 @@ query: >
 			})
 
 			out := make(chan pipeline.Event)
-			vlTomb := tomb.Tomb{}
 			vlSource := victorialogs.Source{}
 
 			err := vlSource.Configure(ctx, []byte(ts.config), subLogger, metrics.AcquisitionMetricsLevelNone)
@@ -281,48 +277,58 @@ query: >
 				t.Fatalf("Unexpected error : %s", err)
 			}
 
-			err = vlSource.StreamingAcquisition(ctx, out, &vlTomb)
-			cstest.AssertErrorContains(t, err, ts.streamErr)
+			streamCtx, streamCancel := context.WithCancel(ctx)
+			defer streamCancel()
+			streamErrCh := make(chan error, 1)
+
+			go func() {
+				streamErrCh <- vlSource.Stream(streamCtx, out)
+			}()
 
 			if ts.streamErr != "" {
+				err = <-streamErrCh
+				cstest.AssertErrorContains(t, err, ts.streamErr)
 				return
 			}
 
 			time.Sleep(time.Second * 2) // We need to give time to start reading from the WS
 
-			readTomb := tomb.Tomb{}
-			readCtx, cancel := context.WithTimeout(ctx, time.Second*10)
+			readCtx, readCancel := context.WithTimeout(ctx, time.Second*10)
 			count := 0
+			readErrCh := make(chan error, 1)
 
-			readTomb.Go(func() error {
-				defer cancel()
+			go func() {
+				defer readCancel()
 
 				for {
 					select {
 					case <-readCtx.Done():
-						return readCtx.Err()
+						readErrCh <- readCtx.Err()
+						return
 					case evt := <-out:
 						count++
 
 						if !strings.HasSuffix(evt.Line.Raw, title) {
-							return fmt.Errorf("Incorrect suffix : %s", evt.Line.Raw)
+							readErrCh <- fmt.Errorf("Incorrect suffix : %s", evt.Line.Raw)
+							return
 						}
 
 						if count == ts.expectedLines {
-							return nil
+							readErrCh <- nil
+							return
 						}
 					}
 				}
-			})
+			}()
 
 			err = feedVLogs(ctx, subLogger, ts.expectedLines, title)
 			if err != nil {
 				t.Fatalf("Unexpected error : %s", err)
 			}
 
-			err = readTomb.Wait()
+			err = <-readErrCh
 
-			cancel()
+			readCancel()
 
 			if err != nil {
 				t.Fatalf("Unexpected error : %s", err)
@@ -357,12 +363,13 @@ query: >
 
 	out := make(chan pipeline.Event, 10)
 
-	vlTomb := &tomb.Tomb{}
+	streamCtx, streamCancel := context.WithCancel(ctx)
+	streamDone := make(chan struct{})
 
-	err = vlSource.StreamingAcquisition(ctx, out, vlTomb)
-	if err != nil {
-		t.Fatalf("Unexpected error : %s", err)
-	}
+	go func() {
+		_ = vlSource.Stream(streamCtx, out)
+		close(streamDone)
+	}()
 
 	time.Sleep(time.Second * 2)
 
@@ -371,10 +378,7 @@ query: >
 		t.Fatalf("Unexpected error : %s", err)
 	}
 
-	vlTomb.Kill(nil)
+	streamCancel()
 
-	err = vlTomb.Wait()
-	if err != nil {
-		t.Fatalf("Unexpected error : %s", err)
-	}
+	<-streamDone
 }

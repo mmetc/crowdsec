@@ -53,9 +53,18 @@ stop() {
        if [[ -n "${PGID}" ]]; then
             kill -- "-${PGID}"
 
-            while pgrep -g "${PGID}" >/dev/null; do
+            # wait up to 5s for graceful shutdown, then escalate to SIGKILL
+            for _ in $(seq 100); do
+                pgrep -g "${PGID}" >/dev/null || break
                 sleep .05
             done
+
+            if pgrep -g "${PGID}" >/dev/null 2>&1; then
+                kill -9 -- "-${PGID}" 2>/dev/null || true
+                while pgrep -g "${PGID}" >/dev/null 2>&1; do
+                    sleep .05
+                done
+            fi
        fi
 
        rm -f -- "${DAEMON_PID}"

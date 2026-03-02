@@ -15,12 +15,12 @@ DEFAULT_TIMEOUT = 30
 # TODO: print unmatched patterns
 
 
-async def terminate_group(p: asyncio.subprocess.Process):
+async def terminate_group(p: asyncio.subprocess.Process, sig: signal.Signals = signal.SIGTERM):
     """
     Terminate the process group (shell, crowdsec plugins)
     """
     try:
-        os.killpg(os.getpgid(p.pid), signal.SIGTERM)
+        os.killpg(os.getpgid(p.pid), sig)
     except ProcessLookupError:
         pass
 
@@ -60,6 +60,15 @@ async def monitor(
                 out.write(line)
                 if pattern and pattern.search(line):
                     await terminate_group(process)
+
+                    # Ensure the process exits even if it ignores SIGTERM
+                    async def _force_kill():
+                        await asyncio.sleep(2)
+                        if process.returncode is None:
+                            await terminate_group(process, signal.SIGKILL)
+
+                    asyncio.create_task(_force_kill())
+
                     # this is nasty.
                     # if we timeout, we want to return a different exit code
                     # in case of a match, so that the caller can tell
@@ -97,8 +106,13 @@ async def monitor(
         if status is None:
             status = process.returncode
     except asyncio.TimeoutError:
+        if status is None:
+            status = 241
         await terminate_group(process)
-        status = 241
+        try:
+            await asyncio.wait_for(process.wait(), timeout=0.2)
+        except asyncio.TimeoutError:
+            await terminate_group(process, signal.SIGKILL)
 
     # Return the same exit code, stdout and stderr as the spawned process
     return status or 0

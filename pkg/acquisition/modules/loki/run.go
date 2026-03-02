@@ -10,17 +10,14 @@ import (
 	"fmt"
 
 	"github.com/prometheus/client_golang/prometheus"
-	tomb "gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki/internal/lokiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
 )
 
-// OneShotAcquisition reads a set of file and returns when done
-func (l *Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
+func (l *Source) OneShot(ctx context.Context, out chan pipeline.Event) error {
 	l.logger.Debug("Loki one shot acquisition")
-	l.Client.SetTomb(t)
 
 	if !l.Config.NoReadyCheck {
 		readyCtx, readyCancel := context.WithTimeout(ctx, l.Config.WaitForReady)
@@ -38,7 +35,7 @@ func (l *Source) OneShotAcquisition(ctx context.Context, out chan pipeline.Event
 
 	for {
 		select {
-		case <-t.Dying():
+		case <-ctx.Done():
 			l.logger.Debug("Loki one shot acquisition stopped")
 			return nil
 		case resp, ok := <-c:
@@ -75,9 +72,7 @@ func (l *Source) readOneEntry(entry lokiclient.Entry, labels map[string]string, 
 	out <- evt
 }
 
-func (l *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
-	l.Client.SetTomb(t)
-
+func (l *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	if !l.Config.NoReadyCheck {
 		readyCtx, readyCancel := context.WithTimeout(ctx, l.Config.WaitForReady)
 		defer readyCancel()
@@ -89,30 +84,23 @@ func (l *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Eve
 
 	ll := l.logger.WithField("websocket_url", l.lokiWebsocket)
 
-	t.Go(func() error {
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
+	respChan := l.Client.QueryRange(ctx, true)
 
-		respChan := l.Client.QueryRange(ctx, true)
-
-		for {
-			select {
-			case resp, ok := <-respChan:
-				if !ok {
-					ll.Warnf("loki channel closed")
-					return errors.New("loki channel closed")
-				}
-
-				for _, stream := range resp.Data.Result {
-					for _, entry := range stream.Entries {
-						l.readOneEntry(entry, l.Config.Labels, out)
-					}
-				}
-			case <-t.Dying():
-				return nil
+	for {
+		select {
+		case resp, ok := <-respChan:
+			if !ok {
+				ll.Warnf("loki channel closed")
+				return errors.New("loki channel closed")
 			}
-		}
-	})
 
-	return nil
+			for _, stream := range resp.Data.Result {
+				for _, entry := range stream.Entries {
+					l.readOneEntry(entry, l.Config.Labels, out)
+				}
+			}
+		case <-ctx.Done():
+			return nil
+		}
+	}
 }

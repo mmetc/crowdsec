@@ -185,38 +185,37 @@ func serveCrowdsec(
 	sd *StateDumper,
 ) {
 	cctx, cancel := context.WithCancel(ctx)
+	crowdCancel = cancel
+	crowdDone = make(chan error, 1)
 
 	var g errgroup.Group
 
 	bucketStore := leakybucket.NewBucketStore()
 
-	crowdsecTomb.Go(func() error {
+	go func() {
 		defer trace.ReportPanic()
+		// this logs every time, even at config reload
+		log.Debugf("running agent after %s ms", time.Since(crowdsecT0))
+		agentReady <- true
 
-		go func() {
-			defer trace.ReportPanic()
-			// this logs every time, even at config reload
-			log.Debugf("running agent after %s ms", time.Since(crowdsecT0))
-
-			agentReady <- true
-
-			if err := runCrowdsec(cctx, &g, cConfig, parsers, hub, datasources, sd, bucketStore); err != nil {
-				log.Fatalf("unable to start crowdsec routines: %s", err)
-			}
-		}()
+		if err := runCrowdsec(cctx, &g, cConfig, parsers, hub, datasources, sd, bucketStore); err != nil {
+			crowdDone <- fmt.Errorf("unable to start crowdsec routines: %w", err)
+			return
+		}
 
 		/* we should stop in two cases :
-		- crowdsecTomb has been Killed() : it might be shutdown or reload, so stop
+		- context has been canceled: it might be shutdown or reload, so stop
 		- acquisTomb is dead, it means that we were in "cat" mode and files are done reading, quit
 		*/
-		waitOnTomb()
+		waitOnCrowdsecStop(cctx)
 		log.Debugf("Shutting down crowdsec routines")
 
 		if err := ShutdownCrowdsecRoutines(cancel, &g, datasources); err != nil {
-			return fmt.Errorf("unable to shutdown crowdsec routines: %w", err)
+			crowdDone <- fmt.Errorf("unable to shutdown crowdsec routines: %w", err)
+			return
 		}
 
-		log.Debugf("everything is dead, return crowdsecTomb")
+		log.Debugf("everything is dead, return crowdsec routine")
 		log.Debugf("sd.DumpDir == %s", sd.DumpDir)
 
 		if sd.DumpDir != "" {
@@ -229,11 +228,11 @@ func serveCrowdsec(
 			os.Exit(0)
 		}
 
-		return nil
-	})
+		crowdDone <- nil
+	}()
 }
 
-func waitOnTomb() {
+func waitOnCrowdsecStop(ctx context.Context) {
 	for {
 		select {
 		case <-acquisTomb.Dead():
@@ -256,7 +255,7 @@ func waitOnTomb() {
 
 			return
 
-		case <-crowdsecTomb.Dying():
+		case <-ctx.Done():
 			log.Infof("Crowdsec engine shutting down")
 			return
 		}

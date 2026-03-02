@@ -8,9 +8,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/segmentio/kafka-go"
-	"gopkg.in/tomb.v2"
-
-	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metrics"
 	"github.com/crowdsecurity/crowdsec/pkg/pipeline"
@@ -31,6 +28,10 @@ func (s *Source) ReadMessage(ctx context.Context, out chan pipeline.Event) error
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return nil
+			}
+
+			if ctx.Err() != nil {
+				return nil //nolint:nilerr
 			}
 
 			s.logger.Errorln(fmt.Errorf("while reading %s message: %w", s.GetName(), err))
@@ -60,30 +61,16 @@ func (s *Source) ReadMessage(ctx context.Context, out chan pipeline.Event) error
 	}
 }
 
-func (s *Source) RunReader(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
-	s.logger.Debugf("starting %s datasource reader goroutine with configuration %+v", s.GetName(), s.Config)
-	t.Go(func() error {
-		return s.ReadMessage(ctx, out)
-	})
-
-	<-t.Dying()
-
-	s.logger.Infof("%s datasource topic %s stopping", s.GetName(), s.Config.Topic)
-
-	if err := s.Reader.Close(); err != nil {
-		return fmt.Errorf("while closing %s reader on topic '%s': %w", s.GetName(), s.Config.Topic, err)
-	}
-
-	return nil
-}
-
-func (s *Source) StreamingAcquisition(ctx context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
+func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	s.logger.Infof("start reader on brokers '%+v' with topic '%s'", s.Config.Brokers, s.Config.Topic)
 
-	t.Go(func() error {
-		defer trace.ReportPanic()
-		return s.RunReader(ctx, out, t)
-	})
+	defer func() {
+		s.logger.Infof("%s datasource topic %s stopping", s.GetName(), s.Config.Topic)
 
-	return nil
+		if err := s.Reader.Close(); err != nil {
+			s.logger.Errorf("while closing %s reader on topic '%s': %s", s.GetName(), s.Config.Topic, err)
+		}
+	}()
+
+	return s.ReadMessage(ctx, out)
 }

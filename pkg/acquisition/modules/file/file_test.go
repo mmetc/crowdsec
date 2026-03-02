@@ -1,10 +1,12 @@
 package fileacquisition_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -13,7 +15,6 @@ import (
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
@@ -340,8 +341,9 @@ force_inotify: true`, testPattern),
 
 			subLogger := logger.WithField("type", fileacquisition.ModuleName)
 
-			tomb := tomb.Tomb{}
 			out := make(chan pipeline.Event)
+			streamCtx, cancelStream := context.WithCancel(ctx)
+			streamErr := make(chan error, 1)
 
 			f := fileacquisition.Source{}
 
@@ -378,8 +380,13 @@ force_inotify: true`, testPattern),
 				}()
 			}
 
-			err = f.StreamingAcquisition(ctx, out, &tomb)
-			cstest.RequireErrorContains(t, err, tc.expectedErr)
+			go func() {
+				streamErr <- f.Stream(streamCtx, out)
+			}()
+
+			if tc.expectedLines == 0 {
+				time.Sleep(200 * time.Millisecond)
+			}
 
 			if tc.expectedLines != 0 {
 				// f.IsTailing is path delimiter sensitive
@@ -422,11 +429,18 @@ force_inotify: true`, testPattern),
 			}
 
 			if tc.expectedOutput != "" {
-				if hook.LastEntry() == nil {
+				found := false
+				for _, entry := range hook.AllEntries() {
+					if strings.Contains(entry.Message, tc.expectedOutput) {
+						found = true
+						break
+					}
+				}
+
+				if !found {
 					t.Fatalf("expected output %s, but got nothing", tc.expectedOutput)
 				}
 
-				assert.Contains(t, hook.LastEntry().Message, tc.expectedOutput)
 				hook.Reset()
 			}
 
@@ -434,7 +448,9 @@ force_inotify: true`, testPattern),
 				tc.teardown()
 			}
 
-			tomb.Kill(nil)
+			cancelStream()
+			err = <-streamErr
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
 }
@@ -481,11 +497,14 @@ mode: tail
 
 	// Create channel for events
 	eventChan := make(chan pipeline.Event)
-	tomb := tomb.Tomb{}
+	streamCtx, cancelStream := context.WithCancel(ctx)
+	defer cancelStream()
+	streamErr := make(chan error, 1)
 
 	// Start acquisition
-	err = f.StreamingAcquisition(ctx, eventChan, &tomb)
-	require.NoError(t, err)
+	go func() {
+		streamErr <- f.Stream(streamCtx, eventChan)
+	}()
 
 	// Create a test file
 	testFile := filepath.Join(dir, "test.log")
@@ -503,8 +522,8 @@ mode: tail
 	require.False(t, f.IsTailing(ignoredFile), "File should be ignored after polling")
 
 	// Cleanup
-	tomb.Kill(nil)
-	require.NoError(t, tomb.Wait())
+	cancelStream()
+	require.NoError(t, <-streamErr)
 }
 
 func TestFileResurrectionViaPolling(t *testing.T) {
@@ -532,10 +551,13 @@ mode: tail
 	require.NoError(t, err)
 
 	eventChan := make(chan pipeline.Event)
-	tomb := tomb.Tomb{}
+	streamCtx, cancelStream := context.WithCancel(ctx)
+	defer cancelStream()
+	streamErr := make(chan error, 1)
 
-	err = f.StreamingAcquisition(ctx, eventChan, &tomb)
-	require.NoError(t, err)
+	go func() {
+		streamErr <- f.Stream(streamCtx, eventChan)
+	}()
 
 	// Wait for initial tail setup
 	time.Sleep(100 * time.Millisecond)
@@ -553,6 +575,6 @@ mode: tail
 	require.True(t, isTailed, "File should be resurrected via polling")
 
 	// Cleanup
-	tomb.Kill(nil)
-	require.NoError(t, tomb.Wait())
+	cancelStream()
+	require.NoError(t, <-streamErr)
 }

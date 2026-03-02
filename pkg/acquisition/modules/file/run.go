@@ -5,6 +5,7 @@ import (
 	"cmp"
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -16,7 +17,6 @@ import (
 	"github.com/nxadm/tail"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
@@ -53,19 +53,46 @@ func (s *Source) OneShot(ctx context.Context, out chan pipeline.Event) error {
 	return nil
 }
 
-func (s *Source) StreamingAcquisition(_ context.Context, out chan pipeline.Event, t *tomb.Tomb) error {
+func sendStreamErr(errCh chan<- error, err error) {
+	if err == nil {
+		return
+	}
+
+	select {
+	case errCh <- err:
+	default:
+	}
+}
+
+func (s *Source) Stream(ctx context.Context, out chan pipeline.Event) error {
 	s.logger.Debug("Starting live acquisition")
-	t.Go(func() error {
-		return s.monitorNewFiles(out, t)
-	})
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	errCh := make(chan error, 1)
+	go func() {
+		sendStreamErr(errCh, s.monitorNewFiles(ctx, out, errCh))
+	}()
 
 	for _, file := range s.files {
-		if err := s.setupTailForFile(file, out, true, t); err != nil {
+		if err := s.setupTailForFile(ctx, file, out, true, errCh); err != nil {
 			s.logger.Errorf("Error setting up tail for %s: %s", file, err)
 		}
 	}
 
-	return nil
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case err := <-errCh:
+			if err == nil || errors.Is(err, context.Canceled) || ctx.Err() != nil {
+				return nil
+			}
+
+			return err
+		}
+	}
 }
 
 // checkAndTailFile validates and sets up tailing for a given file. It performs the following checks:
@@ -77,10 +104,10 @@ func (s *Source) StreamingAcquisition(_ context.Context, out chan pipeline.Event
 //   - filename: The path to the file to check and potentially tail
 //   - logger: A log.Entry for contextual logging
 //   - out: Channel to send file events to
-//   - t: A tomb.Tomb for graceful shutdown handling
+//   - ctx: context used for graceful shutdown handling
 //
 // Returns an error if any validation fails or if tailing setup fails
-func (s *Source) checkAndTailFile(filename string, logger *log.Entry, out chan pipeline.Event, t *tomb.Tomb) error {
+func (s *Source) checkAndTailFile(ctx context.Context, filename string, logger *log.Entry, out chan pipeline.Event, errCh chan<- error) error {
 	// Check if it's a directory
 	fi, err := os.Stat(filename)
 	if err != nil {
@@ -117,7 +144,7 @@ func (s *Source) checkAndTailFile(filename string, logger *log.Entry, out chan p
 	}
 
 	// Setup the tail if needed
-	if err := s.setupTailForFile(filename, out, false, t); err != nil {
+	if err := s.setupTailForFile(ctx, filename, out, false, errCh); err != nil {
 		logger.Errorf("Error setting up tail for file %s: %s", filename, err)
 		return err
 	}
@@ -125,13 +152,13 @@ func (s *Source) checkAndTailFile(filename string, logger *log.Entry, out chan p
 	return nil
 }
 
-func (s *Source) monitorNewFiles(out chan pipeline.Event, t *tomb.Tomb) error {
+func (s *Source) monitorNewFiles(ctx context.Context, out chan pipeline.Event, errCh chan<- error) error {
 	logger := s.logger.WithField("goroutine", "inotify")
 
 	// Setup polling if enabled
 	var (
 		tickerChan <-chan time.Time
-		ticker *time.Ticker
+		ticker     *time.Ticker
 	)
 
 	if s.config.DiscoveryPollEnable {
@@ -154,7 +181,7 @@ func (s *Source) monitorNewFiles(out chan pipeline.Event, t *tomb.Tomb) error {
 				continue
 			}
 
-			_ = s.checkAndTailFile(event.Name, logger, out, t)
+			_ = s.checkAndTailFile(ctx, event.Name, logger, out, errCh)
 
 		case <-tickerChan: // Will never trigger if tickerChan is nil
 			// Poll for all configured patterns
@@ -166,7 +193,7 @@ func (s *Source) monitorNewFiles(out chan pipeline.Event, t *tomb.Tomb) error {
 				}
 
 				for _, file := range files {
-					_ = s.checkAndTailFile(file, logger, out, t)
+					_ = s.checkAndTailFile(ctx, file, logger, out, errCh)
 				}
 			}
 
@@ -177,7 +204,7 @@ func (s *Source) monitorNewFiles(out chan pipeline.Event, t *tomb.Tomb) error {
 
 			logger.Errorf("Error while monitoring folder: %s", err)
 
-		case <-t.Dying():
+		case <-ctx.Done():
 			err := s.watcher.Close()
 			if err != nil {
 				return fmt.Errorf("could not remove all inotify watches: %w", err)
@@ -188,7 +215,7 @@ func (s *Source) monitorNewFiles(out chan pipeline.Event, t *tomb.Tomb) error {
 	}
 }
 
-func (s *Source) setupTailForFile(file string, out chan pipeline.Event, seekEnd bool, t *tomb.Tomb) error {
+func (s *Source) setupTailForFile(ctx context.Context, file string, out chan pipeline.Event, seekEnd bool, errCh chan<- error) error {
 	logger := s.logger.WithField("file", file)
 
 	if s.isExcluded(file) {
@@ -283,21 +310,21 @@ func (s *Source) setupTailForFile(file string, out chan pipeline.Event, seekEnd 
 	s.tails[file] = true
 	s.tailMapMutex.Unlock()
 
-	t.Go(func() error {
+	go func() {
 		defer trace.ReportPanic()
-		return s.tailFile(out, t, tail)
-	})
+		sendStreamErr(errCh, s.tailFile(ctx, out, tail))
+	}()
 
 	return nil
 }
 
-func (s *Source) tailFile(out chan pipeline.Event, t *tomb.Tomb, tail *tail.Tail) error {
+func (s *Source) tailFile(ctx context.Context, out chan pipeline.Event, tail *tail.Tail) error {
 	logger := s.logger.WithField("tail", tail.Filename)
 	logger.Debug("-> start tailing")
 
 	for {
 		select {
-		case <-t.Dying():
+		case <-ctx.Done():
 			logger.Info("File datasource stopping")
 
 			if err := tail.Stop(); err != nil {

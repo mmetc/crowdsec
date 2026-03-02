@@ -15,7 +15,6 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient/useragent"
 	"maps"
@@ -25,7 +24,6 @@ type VLClient struct {
 	Logger *log.Entry
 
 	config                Config
-	t                     *tomb.Tomb
 	failStart             time.Time
 	currentTickerInterval time.Duration
 	requestHeaders        map[string]string
@@ -66,10 +64,6 @@ func updateURI(uri string, newStart time.Time) (string, error) {
 	u.RawQuery = queryParams.Encode()
 
 	return u.String(), nil
-}
-
-func (lc *VLClient) SetTomb(t *tomb.Tomb) {
-	lc.t = t
 }
 
 func (lc *VLClient) shouldRetry() bool {
@@ -118,8 +112,6 @@ func (lc *VLClient) doQueryRange(ctx context.Context, uri string, c chan *Log, i
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-lc.t.Dying():
-			return lc.t.Err()
 		case <-ticker.C:
 			resp, err := lc.Get(ctx, uri)
 			if err != nil {
@@ -268,9 +260,6 @@ func (lc *VLClient) Ready(ctx context.Context) error {
 		case <-ctx.Done():
 			tick.Stop()
 			return ctx.Err()
-		case <-lc.t.Dying():
-			tick.Stop()
-			return lc.t.Err()
 		case <-tick.C:
 			lc.Logger.Debug("Checking if VictoriaLogs is ready")
 
@@ -313,10 +302,14 @@ func (lc *VLClient) Tail(ctx context.Context) (chan *Log, error) {
 	)
 
 	for {
-		resp, err = lc.Get(ctx, u)
+		resp, err = lc.Get(ctx, u) //nolint:bodyclose // body is closed in error paths and via defer in the goroutine
 		lc.Logger.Tracef("Tail request done: %v | %s", resp, err)
 
 		if err != nil {
+			if resp != nil {
+				resp.Body.Close()
+			}
+
 			if errors.Is(err, context.Canceled) {
 				return nil, nil
 			}
@@ -343,14 +336,17 @@ func (lc *VLClient) Tail(ctx context.Context) (chan *Log, error) {
 
 	responseChan := make(chan *Log)
 
-	lc.t.Go(func() error {
+	lc.Logger.Infof("Connecting to %s", u)
+
+	go func() {
+		defer resp.Body.Close()
+
 		_, _, err = lc.readResponse(ctx, resp, responseChan)
 		if err != nil {
-			return fmt.Errorf("error while reading tail response: %w", err)
+			lc.Logger.Errorf("error while reading tail response: %s", err)
 		}
-
-		return nil
-	})
+		close(responseChan)
+	}()
 
 	return responseChan, nil
 }
@@ -370,9 +366,11 @@ func (lc *VLClient) QueryRange(ctx context.Context, infinite bool) chan *Log {
 	lc.Logger.Debugf("Since: %s (%s)", lc.config.Since, t)
 
 	lc.Logger.Infof("Connecting to %s", u)
-	lc.t.Go(func() error {
-		return lc.doQueryRange(ctx, u, c, infinite)
-	})
+	go func() {
+		if err := lc.doQueryRange(ctx, u, c, infinite); err != nil {
+			lc.Logger.Errorf("Error querying range: %s", err)
+		}
+	}()
 
 	return c
 }
