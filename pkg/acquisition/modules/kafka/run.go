@@ -31,7 +31,7 @@ func (s *Source) ReadMessage(ctx context.Context, out chan pipeline.Event) error
 			}
 
 			if ctx.Err() != nil {
-				return nil
+				return nil //nolint:nilerr
 			}
 
 			s.logger.Errorln(fmt.Errorf("while reading %s message: %w", s.GetName(), err))
