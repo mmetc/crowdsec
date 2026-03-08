@@ -257,30 +257,40 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) (*itemSpec, error
 	return spec, nil
 }
 
-func updateNonLocalItem(h *Hub, path string, spec *itemSpec, symlinkTarget string) (*Item, error) {
+func updateNonLocalItem(h *Hub, spec *itemSpec) (*Item, error) {
+	// Downloaded item, in the hub dir: direct lookup by name.
+	if spec.inhub {
+		name := strings.TrimSuffix(strings.TrimSuffix(spec.fauthor+"/"+spec.fname, ".yaml"), ".yml")
+
+		item := h.GetItem(spec.ftype, name)
+		if item == nil || item.Stage != spec.stage {
+			return nil, nil
+		}
+
+		src, err := item.PathForDownload()
+		if err != nil {
+			return nil, err
+		}
+
+		if spec.path == src {
+			h.logger.Tracef("marking %s as downloaded", item.Name)
+			item.State.DownloadPath = src
+		}
+
+		if err := item.setVersionState(spec.path, spec.inhub); err != nil {
+			return nil, err
+		}
+
+		return item, nil
+	}
+
+	// Installed item: find matching item by symlink target.
 	for _, item := range h.GetItemMap(spec.ftype) {
 		if item.Stage != spec.stage {
 			continue
 		}
 
-		// Downloaded item, in the hub dir.
-		if spec.inhub {
-			// not the item we're looking for
-			if !item.validPath(spec.fauthor, spec.fname) {
-				continue
-			}
-
-			src, err := item.PathForDownload()
-			if err != nil {
-				return nil, err
-			}
-
-			if spec.path == src {
-				h.logger.Tracef("marking %s as downloaded", item.Name)
-				item.State.DownloadPath = src
-			}
-		} else if !hasPathSuffix(symlinkTarget, item.RemotePath) {
-			// wrong file
+		if !hasPathSuffix(spec.target, item.RemotePath) {
 			// <type>/<stage>/<author>/<name>.yaml
 			continue
 		}
@@ -333,7 +343,7 @@ func (h *Hub) addItemFromSpec(spec *itemSpec) error {
 			}
 		}
 	} else {
-		item, err = updateNonLocalItem(h, spec.path, spec, spec.target)
+		item, err = updateNonLocalItem(h, spec)
 		if err != nil {
 			return err
 		}
@@ -372,16 +382,8 @@ func (i *Item) checkSubItemVersions() []string {
 			continue
 		}
 
-		if w := sub.checkSubItemVersions(); len(w) > 0 {
-			if sub.State.Tainted {
-				i.addTaint(sub)
-				warn = append(warn, fmt.Sprintf("%s is tainted by %s", i.Name, sub.FQName()))
-			}
-
-			warn = append(warn, w...)
-
-			continue
-		}
+		w := sub.checkSubItemVersions()
+		warn = append(warn, w...)
 
 		if sub.State.Tainted {
 			i.addTaint(sub)
@@ -390,7 +392,12 @@ func (i *Item) checkSubItemVersions() []string {
 			continue
 		}
 
-		if !sub.State.IsInstalled() && i.State.IsInstalled() {
+		if len(w) > 0 {
+			continue
+		}
+
+		if !sub.State.IsInstalled() {
+			// parent install state is already verified above
 			i.addTaint(sub)
 			warn = append(warn, fmt.Sprintf("%s is tainted by missing %s", i.Name, sub.FQName()))
 
@@ -455,23 +462,21 @@ func (h *Hub) syncDir(dir string) error {
 		return err
 	}
 
-	// add non-local items first, so they can find the place in the index
+	// sort non-local items first, so they can find the place in the index
 	// before it's overridden by local items in case of name collision
+	slices.SortStableFunc(specs, func(a, b *itemSpec) int {
+		if a.local == b.local {
+			return 0
+		}
+
+		if !a.local {
+			return -1
+		}
+
+		return 1
+	})
+
 	for _, spec := range specs {
-		if spec.local {
-			continue
-		}
-
-		if err := h.addItemFromSpec(spec); err != nil {
-			return err
-		}
-	}
-
-	for _, spec := range specs {
-		if !spec.local {
-			continue
-		}
-
 		if err := h.addItemFromSpec(spec); err != nil {
 			return err
 		}
